@@ -40,7 +40,7 @@ export default async function AnomalyPage({
     return (
       <Panel>
         <SectionHeader
-          level={1} title="M7 Anomaly Detection" />
+          level={1} title="Anomaly Detection" />
         <div className="p-[var(--ss-space-4)]">
           <EmptyState state="NO_DATA" body="No M7 summary was recorded for this investigation." />
         </div>
@@ -53,7 +53,7 @@ export default async function AnomalyPage({
       <Panel>
         <SectionHeader
           level={1}
-          title="M7 Anomaly Detection"
+          title="Anomaly Detection"
           subtitle="Unsupervised Isolation Forest over M6 v1 observation features. An anomaly is a statistical observation, not a confirmed physical failure."
           actions={<RegisterBadge register="DATA" />}
         />
@@ -73,7 +73,7 @@ export default async function AnomalyPage({
               </span>
             </div>
             <p className="text-[var(--ss-text-secondary)]" style={{ maxWidth: "var(--ss-measure-prose)" }}>
-              {ANOMALY_QUALIFICATION} SmartESS does not confirm a physical failure;
+              {ANOMALY_QUALIFICATION} BurnInGuard AI does not confirm a physical failure;
               confirmation requires engineering work on the hardware.
             </p>
           </div>
@@ -175,15 +175,15 @@ export default async function AnomalyPage({
               >
                 Per-observation score trajectory, is_anomaly markers, both decision
                 thresholds and the full model record are not part of the investigation
-                record. They are available on the module anomaly view, read from the
+                record. They are available on the component anomaly view, read from the
                 frozen M7 artifacts.
               </p>
               <a
-                href={`/modules/${record.module_id}/anomaly`}
+                href={`/components/${record.module_id}/anomaly`}
                 className="ss-field-label w-fit border border-[var(--ss-border-strong)] px-[var(--ss-space-2)] py-[var(--ss-space-1)] text-[var(--ss-text-primary)] hover:border-[var(--ss-accent)]"
                 style={{ borderRadius: "var(--ss-radius-sm)" }}
               >
-                Open module anomaly view
+                Open component anomaly view
               </a>
             </div>
           </Panel>
@@ -192,7 +192,7 @@ export default async function AnomalyPage({
       <NextAction
         href={`/investigations/${investigationId}/evaluation`}
         label="Inspect Detector Evaluation"
-        hint="how the detector behaved for this module"
+        hint="how the detector behaved for this component"
       />
     </>
   );

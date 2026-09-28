@@ -21,8 +21,9 @@ import { asString } from "@/lib/investigation";
 const TABS: readonly { href: string; label: string }[] = [
   { href: "", label: "Context" },
   { href: "/signals", label: "Signal Analysis" },
-  { href: "/anomaly", label: "M7 Anomaly" },
-  { href: "/evaluation", label: "M8 Evaluation" },
+  { href: "/anomaly", label: "Anomaly" },
+  { href: "/evaluation", label: "Evaluation" },
+  { href: "/prediction", label: "Component Projection" },
 ];
 
 export default async function ModuleLayout({
@@ -73,12 +74,12 @@ export default async function ModuleLayout({
       <div className="flex min-w-0 flex-1 flex-col lg:overflow-y-auto">
         <nav
           className="flex flex-wrap items-center gap-[var(--ss-space-1)] border-b border-[var(--ss-border-subtle)] px-[var(--ss-space-4)] py-[var(--ss-space-3)] lg:px-[var(--ss-space-6)]"
-          aria-label="Module"
+          aria-label="Component"
         >
           {TABS.map((tab) => (
             <Link
               key={tab.label}
-              href={`/modules/${moduleId}${tab.href}`}
+              href={`/components/${moduleId}${tab.href}`}
               className="ss-field-label border border-[var(--ss-border-subtle)] px-[var(--ss-space-2)] py-[var(--ss-space-1)] text-[var(--ss-text-secondary)] hover:border-[var(--ss-accent)] hover:text-[var(--ss-text-primary)]"
               style={{ borderRadius: "var(--ss-radius-sm)" }}
             >

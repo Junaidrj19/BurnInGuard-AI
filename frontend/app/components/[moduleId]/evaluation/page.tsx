@@ -1,14 +1,22 @@
 import { notFound } from "next/navigation";
 import { AccessibleDataTable } from "@/components/AccessibleDataTable";
+import { AnomalyEvaluation } from "@/components/AnomalyEvaluation";
+import { DriftAccuracy } from "@/components/DriftAccuracy";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
 import { MetricValue } from "@/components/MetricValue";
 import { NextAction, WorkflowStrip } from "@/components/NextAction";
 import { Panel, SectionHeader, SplitPanel } from "@/components/Panel";
 import { RegisterBadge } from "@/components/RegisterValue";
-import { getEvaluation, getModule } from "@/lib/api/endpoints";
+import { SihEvaluationPanel } from "@/components/SihEvaluationPanel";
+import { StaticVsDynamic } from "@/components/StaticVsDynamic";
+import { getEvaluation, getModule, getPredictionEvaluation } from "@/lib/api/endpoints";
 import { asBoolean, asNumber, asString } from "@/lib/investigation";
 import type { ModuleLevelMetrics } from "@/lib/types/m10";
+import {
+  TERM_POST_HOC_EVALUATION,
+  TERM_POST_HOC_EVALUATION_DETECTOR_NOTE,
+} from "@/lib/domain/terminology";
 
 /**
  * M8 Detector Evaluation (UX.md §9).
@@ -34,6 +42,7 @@ export default async function ModuleEvaluationPage({
   const detail = moduleResult.data;
 
   const evalResult = await getEvaluation(detail.model_id);
+  const driftResult = await getPredictionEvaluation();
 
   const ev = detail.module_evaluation;
   const timing = detail.timing_analysis;
@@ -41,21 +50,46 @@ export default async function ModuleEvaluationPage({
 
   return (
     <>
+      {/* ── conventional vs dynamic screening (SIH Part 3) ────── */}
+      <StaticVsDynamic />
+
+      {/* ── unified SIH evaluation (SIH Part 9) ─────────────── */}
+      <SihEvaluationPanel
+        anomalyEval={evalResult.kind === "ok" ? evalResult.data : null}
+        driftEval={driftResult.kind === "ok" ? driftResult.data : null}
+        componentAnomalyScore={detail.module_summary.max_anomaly_score}
+        componentAnomalyStatus={detail.module_summary.module_anomaly_status}
+      />
+
+      {/* ── anomaly detection evaluation (SIH Part 4 + 5) ──── */}
+      {evalResult.kind !== "ok" ? (
+        <AnomalyEvaluation summary={null} />
+      ) : (
+        <AnomalyEvaluation summary={evalResult.data} />
+      )}
+
+      {/* ── drift prediction accuracy (SIH Part 6) ───────────── */}
+      {driftResult.kind !== "ok" ? (
+        <DriftAccuracy evaluation={null} />
+      ) : (
+        <DriftAccuracy evaluation={driftResult.data} />
+      )}
+
       <Panel>
         <SectionHeader
           level={1}
-          title="M8 Detector Evaluation"
+          title="Detector Evaluation"
           subtitle="Evaluation-only layer over the frozen M7 artifacts. It never retrains and never changes a threshold."
           actions={<RegisterBadge register="CALCULATION" />}
         />
         <div className="flex flex-col gap-[var(--ss-space-4)] p-[var(--ss-space-4)]">
           <WorkflowStrip
-            current="M8 Evaluation"
+            current="Evaluation"
             steps={[
-              { label: "Module", href: `/modules/${moduleId}` },
-              { label: "Signals", href: `/modules/${moduleId}/signals` },
-              { label: "M7 Anomaly", href: `/modules/${moduleId}/anomaly` },
-              { label: "M8 Evaluation" },
+              { label: "Component", href: `/components/${moduleId}` },
+              { label: "Signals", href: `/components/${moduleId}/signals` },
+              { label: "Anomaly", href: `/components/${moduleId}/anomaly` },
+              { label: "Evaluation" },
               { label: "Start Investigation", href: `/investigations/new?module_id=${moduleId}` },
             ]}
           />
@@ -65,7 +99,7 @@ export default async function ModuleEvaluationPage({
           >
             <div className="flex flex-col gap-[var(--ss-space-1)]">
               <span className="ss-field-label" style={{ color: "var(--ss-state-pass)" }}>
-                M8 answers
+                Detector evaluation answers
               </span>
               <p className="text-[var(--ss-text-secondary)]">
                 How the frozen detector behaves across the evaluated population, and when
@@ -74,25 +108,25 @@ export default async function ModuleEvaluationPage({
             </div>
             <div className="flex flex-col gap-[var(--ss-space-1)]">
               <span className="ss-field-label" style={{ color: "var(--ss-state-reject)" }}>
-                M8 does not answer
+                Detector evaluation does not answer
               </span>
               <p className="text-[var(--ss-text-secondary)]">
-                Whether this particular module failed. Population behaviour is not a
-                per-module diagnosis.
+                Whether this particular component failed. Population behaviour is not a
+                per-component diagnosis.
               </p>
             </div>
           </div>
         </div>
       </Panel>
 
-      {/* ── this module's evaluation row ────────────────────────────── */}
+      {/* ── this component's evaluation row ─────────────────────────── */}
       <SplitPanel
         ratio="balanced"
         left={
           <Panel>
             <SectionHeader
-              title="This module"
-              subtitle="Model output for this module, kept separate from ground truth."
+              title="This component"
+              subtitle="Model output for this component, kept separate from post-hoc evaluation labels."
               level={3}
             />
             <div className="grid grid-cols-2 gap-[var(--ss-space-4)] p-[var(--ss-space-4)]">
@@ -106,8 +140,8 @@ export default async function ModuleEvaluationPage({
         right={
           <Panel>
             <SectionHeader
-              title="Ground truth"
-              subtitle="Injected synthetic labels. Evaluation-only."
+              title={TERM_POST_HOC_EVALUATION}
+              subtitle={TERM_POST_HOC_EVALUATION_DETECTOR_NOTE}
               level={3}
               actions={<RegisterBadge register="GROUND_TRUTH" />}
             />
@@ -247,6 +281,12 @@ function PopulationMetrics({
                 render: (r) => r.m.false_positive_rate ?? "—",
                 align: "right",
               },
+              {
+                key: "fnr",
+                header: "false_negative_rate",
+                render: (r) => r.m.false_negative_rate ?? "—",
+                align: "right",
+              },
             ]}
           />
           <p
@@ -261,7 +301,7 @@ function PopulationMetrics({
       <Panel>
         <SectionHeader
           title="Evaluation identity"
-          subtitle="What was evaluated, against which ground truth, and when."
+          subtitle="What was evaluated, against which post-hoc evaluation labels, and when."
           level={3}
         />
         <div className="flex flex-col gap-[var(--ss-space-4)] p-[var(--ss-space-4)]">
@@ -276,7 +316,7 @@ function PopulationMetrics({
               label="ground_truth_used_for_training"
               value={summary.ground_truth_used_for_training}
               register="DATA"
-              note="ground truth is evaluation-only"
+              note="post-hoc evaluation labels are evaluation-only"
             />
             <MetricValue
               label="mean_lead_vs_onset_cycles"
@@ -298,7 +338,7 @@ function PopulationMetrics({
             className="text-[var(--ss-text-muted)]"
             style={{ fontSize: "var(--ss-text-label-size)", maxWidth: "var(--ss-measure-prose)" }}
           >
-            Observation-level ground truth does not exist, so no observation-level
+            Observation-level post-hoc evaluation labels do not exist, so no observation-level
             precision, recall, F1 or FPR is reported anywhere — only flag-rate summaries.
           </p>
         </div>

@@ -6,7 +6,7 @@ import { Panel, SectionHeader } from "@/components/Panel";
 import { StatusChip } from "@/components/StatusChip";
 import { listInvestigations } from "@/lib/api/endpoints";
 
-export const metadata = { title: "Investigation History — SmartESS" };
+export const metadata = { title: "Investigation History — BurnInGuard AI" };
 export const dynamic = "force-dynamic";
 
 /**
@@ -45,7 +45,7 @@ export default async function HistoryPage() {
           <>
             <table className="w-full border-collapse text-left">
               <caption className="ss-sr-only">
-                Stored SmartESS investigations with module, model, status and
+                Stored investigations with component, model, status and
                 creation timestamp.
               </caption>
               <thead>

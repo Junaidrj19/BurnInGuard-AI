@@ -94,7 +94,7 @@ export default async function SignalsPage({
               and cycle-range zoom, open the module signal workbench.
             </p>
             <a
-              href={`/modules/${record.module_id}/signals`}
+              href={`/components/${record.module_id}/signals`}
               className="ss-field-label w-fit border border-[var(--ss-border-strong)] px-[var(--ss-space-2)] py-[var(--ss-space-1)] text-[var(--ss-text-primary)] hover:border-[var(--ss-accent)]"
               style={{ borderRadius: "var(--ss-radius-sm)" }}
             >

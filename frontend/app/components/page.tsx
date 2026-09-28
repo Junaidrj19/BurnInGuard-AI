@@ -9,13 +9,14 @@ import { StatusChip } from "@/components/StatusChip";
 import { getModulePopulation, listModules } from "@/lib/api/endpoints";
 import { ANOMALY_QUALIFICATION } from "@/lib/copy/states";
 import { MODULE_ANOMALY_STATUS } from "@/lib/types/backend";
+import { TERM_COMPONENT_ID } from "@/lib/domain/terminology";
 
-export const metadata = { title: "Module Explorer — SmartESS" };
+export const metadata = { title: "Components — BurnInGuard AI" };
 
 const PAGE_SIZE = 50;
 
 /**
- * Module Explorer (UX.md §5 module table).
+ * Components explorer (UX.md §5 module table).
  *
  * Every row is a real `module-summary.parquet` row served by `GET /modules`.
  * Filtering and pagination happen on the server; the client computes nothing.
@@ -48,7 +49,7 @@ export default async function ModulesPage({
     return (
       <Panel>
         <SectionHeader
-          level={1} title="Module Explorer" />
+          level={1} title="Components" />
         <div className="p-[var(--ss-space-4)]">
           <ErrorState result={pageResult} />
         </div>
@@ -73,7 +74,7 @@ export default async function ModulesPage({
       if (v !== undefined && v !== "" && v !== 0) params.set(k, String(v));
     }
     const q = params.toString();
-    return q ? `/modules?${q}` : "/modules";
+    return q ? `/components?${q}` : "/components";
   }
 
   return (
@@ -82,14 +83,14 @@ export default async function ModulesPage({
       <Panel>
         <SectionHeader
           level={1}
-          title="Module Explorer"
+          title="Components"
           subtitle={`${page.total} module${page.total === 1 ? "" : "s"} scored by this detector. ${ANOMALY_QUALIFICATION}`}
         />
         <div className="flex flex-col gap-[var(--ss-space-4)] p-[var(--ss-space-4)]">
           {population ? (
             <>
               <div className="grid grid-cols-2 gap-[var(--ss-space-4)] lg:grid-cols-4">
-                <MetricValue label="Modules" value={population.n_modules} register="DATA" />
+                <MetricValue label="Components" value={population.n_modules} register="DATA" />
                 {MODULE_ANOMALY_STATUS.map((s) => (
                   <MetricValue
                     key={s}
@@ -190,14 +191,14 @@ export default async function ModulesPage({
             ))}
           </div>
 
-          <form action="/modules" method="get" className="flex flex-wrap items-end gap-[var(--ss-space-2)]">
+          <form action="/components" method="get" className="flex flex-wrap items-end gap-[var(--ss-space-2)]">
             {sp.lot_id && <input type="hidden" name="lot_id" value={sp.lot_id} />}
             {sp.anomaly_status && (
               <input type="hidden" name="anomaly_status" value={sp.anomaly_status} />
             )}
             <div className="flex flex-col gap-[var(--ss-space-1)]">
               <label htmlFor="search" className="ss-field-label">
-                Module id contains
+                Component id contains
               </label>
               <input
                 id="search"
@@ -222,7 +223,7 @@ export default async function ModulesPage({
       {/* ── the modules ──────────────────────────────────────────────── */}
       <Panel>
         <SectionHeader
-          title="Modules"
+          title="Components"
           subtitle={`Showing ${page.returned} of ${page.total} matching, from offset ${page.offset}.`}
           level={3}
         />
@@ -242,10 +243,10 @@ export default async function ModulesPage({
                 columns={[
                   {
                     key: "module",
-                    header: "module_id",
+                    header: TERM_COMPONENT_ID,
                     render: (m) => (
                       <Link
-                        href={`/modules/${m.module_id}`}
+                        href={`/components/${m.module_id}`}
                         className="text-[var(--ss-accent)] hover:text-[var(--ss-accent-hover)]"
                       >
                         {m.module_id}
@@ -253,7 +254,11 @@ export default async function ModulesPage({
                     ),
                   },
                   { key: "lot", header: "lot_id", render: (m) => m.lot_id ?? "—" },
-                  { key: "test", header: "test_id", render: (m) => m.test_id ?? "—" },
+                  {
+                    key: "test",
+                    header: "Stress Run ID",
+                    render: (m) => m.test_id ?? "—",
+                  },
                   {
                     key: "status",
                     header: "anomaly status",
@@ -321,13 +326,13 @@ export default async function ModulesPage({
       <Panel>
         <SectionHeader
           title="Canonical case"
-          subtitle="The module used for the reference investigation. Ground truth is healthy, the detector does not flag it at module level, and the statistical baseline does — which is the point."
+          subtitle="The module used for the reference investigation. Post-hoc evaluation labels are healthy, the detector does not flag it at module level, and the statistical baseline does — which is the point."
           level={3}
         />
         <div className="flex flex-wrap items-center gap-[var(--ss-space-3)] p-[var(--ss-space-4)]">
           <MonoId value="syn-mod-0042" />
           <Link
-            href="/modules/syn-mod-0042"
+            href="/components/syn-mod-0042"
             className="ss-field-label border border-[var(--ss-accent)] px-[var(--ss-space-3)] py-[var(--ss-space-1)]"
             style={{
               borderRadius: "var(--ss-radius-sm)",

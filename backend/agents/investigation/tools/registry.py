@@ -11,6 +11,7 @@ from backend.agents.investigation.tools.slope import calculate_slope
 from backend.agents.investigation.tools.changepoint import detect_change_point
 from backend.agents.investigation.tools.degradation_rate import calculate_degradation_rate
 from backend.agents.investigation.tools.temperature import analyze_temperature_dependence
+from backend.agents.investigation.tools.drift_horizon import predict_drift_horizon
 from backend.agents.investigation.tools.models import ToolResult
 
 
@@ -50,5 +51,6 @@ def get_default_registry() -> ToolRegistry:
         r.register("calculate_correlation", calculate_correlation)
         r.register("check_acceptance_limits", check_acceptance_limits)
         r.register("calculate_degradation_rate", calculate_degradation_rate)
+        r.register("predict_drift_horizon", predict_drift_horizon)
         _default_registry = r
     return _default_registry

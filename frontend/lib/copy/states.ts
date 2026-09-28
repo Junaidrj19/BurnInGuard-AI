@@ -81,9 +81,12 @@ export const STATE_COPY = {
 
 export type StateKey = keyof typeof STATE_COPY;
 
-/** The single orientation sentence for Mission Control (UX.md §5). */
-export const ORIENTATION_SENTENCE =
-  "SmartESS traces abnormal electrical behaviour from measured signals through anomaly detection, engineering calculations, evidence retrieval, competing hypotheses, validation, and a traceable report.";
+/**
+ * The product orientation sentence lives in `lib/copy/product.ts` as
+ * `PRODUCT_ORIENTATION`. It is intentionally not duplicated here: two
+ * orientation sentences carrying different product names is exactly the kind of
+ * drift that shows up as an inconsistency between the UI and the documentation.
+ */
 
 /**
  * Mandatory qualification wherever `module_anomaly_status` appears (UX.md §5).

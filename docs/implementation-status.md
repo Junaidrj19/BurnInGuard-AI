@@ -1,5 +1,7 @@
 # Implementation Status
 
+> **BurnInGuard AI product adaptation.** The product is now BurnInGuard AI, demonstrated with an SIH power-module case. The adaptation changed `frontend/` and documentation only — no file under `backend/` or `ml/` was modified, no API route was added, and no threshold or artifact changed. See `docs/burninguard/domain-adaptation.md`. Some statements below predate the M9 and M10 work and are marked where they are superseded.
+
 ## Repository State
 
 The repository is a **design-initialized** project with M1–M6 implemented.
@@ -102,7 +104,7 @@ FastAPI Backend
 
 | Path | Role |
 | --- | --- |
-| `frontend/` | Next.js UI (placeholder) |
+| `frontend/` | Next.js UI — implemented (BurnInGuard AI product surface) |
 | `backend/api/` | REST resources: projects, modules, datasets, experiments, models, investigations, reports |
 | `backend/domain/` | module_profiles, telemetry, reliability, investigations |
 | `backend/ml/` | preprocessing, features, anomaly_detection, degradation, evaluation, registry |
@@ -169,7 +171,7 @@ Root `ml/` (datasets/generators) and `backend/ml/` (pipeline services) are **bot
 - Evaluation tests `backend/tests/test_m8_evaluation.py`
 - Canonical evaluation artifacts (local) `ml/datasets/evaluation/`
 
-**Placeholders only:** remaining `frontend/`, `backend/api/`, `backend/ml/` service wrappers, agents, knowledge, and `knowledge_base/` paths. They contain no APIs, UI, or agents. Root `ml/` holds the generator, validator, features, and Isolation Forest detector.
+**Placeholders only:** `backend/ml/` service wrappers and `backend/workers/`. NOTE (superseded): `frontend/`, `backend/api/`, `backend/agents/`, `backend/knowledge/` and `knowledge_base/` are now implemented — `backend/api/` serves the read-only projection routes, `backend/agents/investigation/` implements the M9 pipeline, and `frontend/` implements the BurnInGuard AI product surface. Root `ml/` holds the generator, validator, features, and Isolation Forest detector.
 
 ## Missing Components
 
@@ -662,6 +664,6 @@ No source document was modified.
 
 ## Validation
 
-Full suite: `python3 -m pytest -W error` — **359 passed, 0 failed, 0 skipped**. Includes ModuleProfile (M1), TestProfile (M2), Telemetry (M3), synthetic generator (M4), dataset validation (M5), feature engineering (M6), anomaly detection (M7), model evaluation (M8), multi-agent investigation (M9), curated-corpus validation/statistics/coverage (M9), RAG ingestion/provenance (M9), and LLM configuration / validation-gate / secret-safety tests (M9). `python3 -m compileall -q backend ml scripts` succeeded. No ruff/mypy/frontend toolchain is configured yet.
+Full suite: `python3 -m pytest` — **397 passed, 0 failed, 0 skipped** (re-run after the BurnInGuard AI product adaptation; the adaptation touched no backend or ML file, so the count and outcome are unchanged by it). Includes ModuleProfile (M1), TestProfile (M2), Telemetry (M3), synthetic generator (M4), dataset validation (M5), feature engineering (M6), anomaly detection (M7), model evaluation (M8), multi-agent investigation (M9), curated-corpus validation/statistics/coverage (M9), RAG ingestion/provenance (M9), and LLM configuration / validation-gate / secret-safety tests (M9). `python3 -m compileall -q backend ml scripts` succeeded. No ruff/mypy is configured. The frontend toolchain is configured: `npx tsc --noEmit`, `npm run lint` and `npm run build` all pass.
 
 M8 additionally verifies the `m7_test_lot_compatibility` regression gate: the held-out test lots `lot-01, lot-04` reproduce precision ≈ 0.8776, recall ≈ 0.4778, F1 ≈ 0.6187, FPR ≈ 0.0286 on the frozen 300-module test population, independent of the 750-module `overall_population` evaluation.

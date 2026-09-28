@@ -1,18 +1,30 @@
-# SmartESS
+# BurnInGuard AI
 
-Configurable agentic reliability-intelligence platform for SiC MOSFET power modules used in EV power electronics.
+**AI-Driven Burn-In Screening & Engineering Failure Investigation**
 
-SmartESS detects abnormal degradation during reliability testing, runs deterministic engineering analysis on frozen ML artifacts, retrieves supporting evidence from a curated knowledge base, and produces traceable engineering reports with candidate failure mechanisms. The system assists engineers; it does not certify, reject, or release components.
+BurnInGuard AI screens components for abnormal parametric behaviour during burn-in and accelerated stress testing, runs deterministic engineering analysis on frozen ML artifacts, retrieves supporting evidence from a curated engineering knowledge base, and produces traceable engineering reports with candidate failure mechanisms. The system assists engineers; it does not certify, reject, or release components.
 
-**Current milestone:** M9 — Multi-Agent Investigation Engine (implemented and validated)
+**Current milestone:** M9 — Multi-Agent Investigation Engine (implemented; test suite passing)
+
+---
+
+## Demonstration case: SIH power module
+
+BurnInGuard AI is designed as a **component-agnostic** burn-in screening and engineering investigation platform. The **SIH power module** is the concrete demonstration case, because the problem statement does not prescribe a single component family or provide a component-specific investigation corpus.
+
+Three things about the demonstration are stated plainly, because a reliability engineer will check them:
+
+- **The demonstration dataset is a synthetic power-cycling reliability dataset** (`dataset_id: syn-sic-pc-dev-001`), not a burn-in screen. The screening and investigation pipeline is identical; only the stress type differs. The product does not relabel power-cycling data as burn-in data.
+- **The evidence corpus is a reliability and degradation-mechanism corpus**, not a burn-in standards corpus. It covers power cycling, gate-oxide, die-attach and bond-wire degradation. The dedicated screening standards (JESD22-A108, AEC-Q101) are paywalled and are **not** present in this repository, and the UI does not claim otherwise.
+- **No claim is made that the platform has been validated across other component families.** It has been exercised on this one demonstration case.
 
 ---
 
 ## Overview
 
-SmartESS is organized as a milestone-driven data and ML pipeline (M1–M8) with an agentic investigation layer (M9) on top. The repository contains:
+BurnInGuard AI is organized as a milestone-driven data and ML pipeline (M1–M8) with an agentic investigation layer (M9) on top, and an engineer-facing frontend (M10). The repository contains:
 
-- Versioned domain contracts (Module Profile, Test Profile, Telemetry)
+- Versioned domain contracts (Component/Module Profile, Test Profile, Telemetry)
 - A deterministic synthetic dataset generator and validation engine
 - A versioned observation-feature contract and Isolation Forest anomaly detector
 - An evaluation-only layer over frozen M7 artifacts
@@ -20,7 +32,7 @@ SmartESS is organized as a milestone-driven data and ML pipeline (M1–M8) with 
 
 The primary output is a structured engineering investigation report with provenance, uncertainty, and human review as the final decision point.
 
-**Product naming note:** Design documents (`PRD.md`, `architecture.md`, `agent-rules.md`) use *BurnInGuard AI*; the repository, package name, and `tech-stack.md` use *SmartESS*. They describe the same product.
+**Product naming note:** *BurnInGuard AI* is the product, and it is the name used by `PRD.md`, `architecture.md`, `agent-rules.md` and the entire user-facing frontend. The internal Python package, repository history and `tech-stack.md` still use the original project name *SmartESS*; these are the same system. Internal identifiers were deliberately left alone so that no backend contract, artifact path or test changed during the product adaptation.
 
 ---
 
@@ -30,30 +42,86 @@ EV power modules operate under electrical, thermal, and mechanical stress. Relia
 
 Relevant indicators include RDS(on), Vth, IGSS, IDSS, VDS(on), Tj, Tc, and thermal resistance. Abnormal trajectories may provide earlier warning than absolute limit violations, but a signal change does not uniquely identify a physical failure mechanism.
 
-SmartESS addresses four engineering questions:
+BurnInGuard AI addresses four engineering questions:
 
-1. Is the module behaving abnormally before conventional limits are violated?
+1. Is the component behaving abnormally before conventional limits are violated?
 2. What quantitative evidence supports the observed anomaly?
 3. Which failure mechanisms are plausible candidates?
 4. What should an engineer investigate next?
 
 ---
 
-## What SmartESS Does
+## What BurnInGuard AI Does
 
 | Capability | Status |
 | --- | --- |
-| Module Profile / Test Profile / Telemetry contracts (M1–M3) | Implemented |
+| Component Profile / Test Profile / Telemetry contracts (M1–M3) | Implemented |
 | Synthetic dataset generation and validation (M4–M5) | Implemented |
 | Versioned observation features (M6) | Implemented |
 | Unsupervised anomaly detection (M7) | Implemented (frozen artifacts) |
 | Offline model evaluation (M8) | Implemented (evaluation-only) |
 | Multi-agent investigation with RAG (M9) | Implemented |
 | Engineering knowledge base + ChromaDB retrieval | Implemented (partial corpus) |
-| FastAPI investigation endpoint | Minimal (`/investigations`, `/health`) |
-| Frontend UI | Not implemented (placeholder directory) |
+| FastAPI read + investigation endpoints | Implemented (`/investigations`, `/modules`, `/readiness`, `/corpus`, `/health`) |
+| Engineer-facing frontend (M10) | Implemented for the surfaces listed below; not every M10 design phase is built |
+| Screening disposition (PASS / MONITOR / FLAG) | Implemented as a presentation-layer derivation over `module_anomaly_status` |
+| EARLY REJECT disposition | Implemented, gated on a real `check_acceptance_limits` violation |
+| Forward trajectory prediction (Module B) | Implemented — Ridge on `RDS_on@0`/`RDS_on@14400` → terminal `RDS_on@100000` (166.7 h) |
+| Predicted drift, safety slope, early reject | Implemented from the module profile acceptance criteria |
+| Burn-in run as an addressable resource | Not implemented (`test_id` is a component attribute) |
+| Remaining usable life / RUL extrapolation | Not implemented (no extrapolation beyond the supplied 166.7 h dataset) |
+| Anomaly type taxonomy | Not implemented |
 | SQLAlchemy persistence / Clerk auth | Not implemented |
 | Hardware integration / RUL / RL | Not in scope |
+
+---
+
+## Implementation Status
+
+The distinction below is the honest one. "Implemented" means the code exists in this
+repository and is exercised by the test suite. It does **not** mean validated against
+real hardware or real production telemetry — no part of this system has been.
+
+### Implemented
+
+- Component, test and telemetry data contracts (M1–M3), with JSON Schemas
+- Synthetic dataset generation and independent dataset validation (M4–M5)
+- Versioned, deterministic, causal feature engineering (M6)
+- Isolation Forest anomaly detection plus a statistical baseline comparator (M7)
+- Offline, evaluation-only metrics over frozen M7 artifacts (M8)
+- LangGraph-orchestrated investigation: InvestigationAgent, EvidenceAgent,
+  HypothesisAgent, ReportAgent, with two validation gates (M9)
+- Nine fixed deterministic engineering tools, versioned, with recorded provenance
+- ChromaDB vector retrieval over the ingested corpus, with resolvable citations
+- Hypothesis validation (unknown-citation, confidence-range, status-evidence checks)
+- Report validation (required sections, unknown citations, CONFIRMED-mechanism
+  rejection, unwarranted-certainty phrases, provenance presence)
+- Report generation with per-finding epistemic classification
+- Provenance capture for every pipeline stage
+- Read-only projection API over the frozen artifacts
+- Engineer-facing frontend: Screening Overview, Components, Lots, Telemetry,
+  Anomaly, Evaluation, Engineering Calculations, Drift Analysis, Evidence,
+  Hypotheses, Report, Provenance, Pipeline Trace, Knowledge Base, Architecture,
+  Investigation History, Pipeline Status
+
+### Experimental / Demonstration
+
+- The SIH power-module investigation configuration
+- The BurnInGuard AI product-facing adaptation (naming, terminology, navigation,
+  screening disposition, demonstration-case framing)
+- The screening disposition mapping itself: it is a presentation-layer derivation
+  over an existing backend field, not a validated screening criterion
+- The synthetic power-cycling dataset, which is physics-informed but is explicitly
+  **not** a validated physical reliability model
+
+### Future
+
+- Additional component families
+- Production ATE / burn-in oven integration
+- An expanded engineering corpus, including the burn-in and operating-life
+  standards that are currently paywalled and absent
+- Production deployment hardening, authentication and persistence
+- Forward trajectory prediction, if and only if it can be evaluated honestly
 
 ---
 
@@ -91,16 +159,19 @@ M9 does not modify M7 or M8 artifacts. M7/M8 immutability is verified via hash s
 5. Build versioned observation features (M6 v1)
 6. Train Isolation Forest on observation features; score modules (M7)
 7. Evaluate frozen M7 artifacts against ground truth offline (M8)
-8. Investigate an anomalous module (M9):
-      M6/M7/M8 artifacts (read-only)
-      → deterministic tools
-      → evidence retrieval
-      → hypothesis generation
-      → report synthesis
-9. Engineer reviews report and decides next steps
+ 8. Investigate an anomalous module (M9):
+       M6/M7/M8 artifacts (read-only)
+       → deterministic tools
+       → evidence retrieval
+       → hypothesis generation
+       → report synthesis
+ 9. Predict the future terminal value (Module B):
+       RDS_on@0 + RDS_on@14400 → ridge model → terminal RDS_on@100000 (166.7 h)
+       → drift rate, safety slope, early reject, prediction error
+10. Engineer reviews report and prediction, then decides next steps
 ```
 
-**Ground Truth boundary:** Ground truth (`ground_truth/ground-truth.parquet`) is used for M4 dataset generation and M8 offline evaluation only. The M9 runtime investigation pipeline does not read ground truth. Investigation operates on telemetry/features, M7 outputs, M8 outputs, deterministic findings, retrieved evidence, and LLM reasoning.
+**Ground Truth boundary:** Ground truth (`ground_truth/ground-truth.parquet`) is used for M4 dataset generation and M8 offline evaluation only, and for Module B *post-prediction* evaluation. The M9 runtime investigation pipeline does not read ground truth. The Module B model is scored only on early features; the actual terminal value is read after prediction, for evaluation, and is never a model feature.
 
 ---
 
@@ -233,6 +304,23 @@ Ground truth is evaluation-only and is not passed to `fit()`.
 - CLI: `scripts/investigate.py`
 - FastAPI: `backend/api/investigations.py`
 - Outputs: `ml/datasets/investigations/<investigation_id>/`
+
+### Module B — Predicted Trajectory (Forward Drift Prediction)
+
+**Purpose:** Forward estimate of a module's terminal `RDS_on` value, scored only on early-life data, kept separate from Module A (observed anomaly).
+
+**Implementation:**
+- Model: `ml/prediction/` (`config`, `dataset`, `model`, `drift`, `train`)
+- Shipped model: Ridge with `StandardScaler` on `RDS_on@0` and `RDS_on@14400` → `RDS_on@100000` (166.7 h)
+- Lot holdout: train = lot-02/03/05 (450), test = lot-01/04 (300)
+- API: `GET /modules/{id}/prediction`, `GET /prediction/evaluation` (`backend/api/prediction.py`)
+- M9 deterministic tool: `predict_drift_horizon` (`backend/agents/investigation/tools/drift_horizon.py`)
+- Frontend: `/components/{moduleId}/prediction` (`frontend/components/ModuleBPanel.tsx`)
+- Docs: `docs/burninguard/module-b-prediction.md`
+
+**Safety slope:** `20 / 166.6667 = 0.12 %/h`. Early reject when predicted relative change > 20% or predicted terminal > 8.0 mOhm (from `sic-reference-module.json`).
+
+**Ground truth boundary:** the actual terminal value is read only after prediction, for evaluation. It is never a model feature (leakage guard enforces feature cycle ≤ 14,400).
 
 ---
 
@@ -429,7 +517,7 @@ When no API key is configured, `MockLLMClient` is used and hypothesis generation
 
 ## Epistemic and Engineering Safety
 
-SmartESS intentionally avoids simplistic signal-to-failure mappings:
+BurnInGuard AI intentionally avoids simplistic signal-to-failure mappings:
 
 - RDS_on increase does not automatically mean bond-wire failure
 - VTH shift does not automatically mean permanent gate-oxide damage
@@ -456,11 +544,12 @@ Binding rules from `agent-rules.md`:
 - M6 versioned observation-feature contract (375,750 rows × 160 columns on default dataset)
 - M7 frozen Isolation Forest anomaly detection with lot holdout
 - M8 evaluation-only layer with timing and baseline analysis
-- M9 LangGraph investigation with four agents, nine deterministic tools, validation gates
+- M9 LangGraph investigation with four agents, ten deterministic tools, validation gates
+- Module B forward trajectory prediction (Ridge on early RDS_on → terminal value @ 166.7 h)
 - Curated engineering knowledge base with ChromaDB retrieval (19 verified documents, 360 chunks)
 - OpenRouter / Llama integration, with an explicit mock path when unconfigured
 - FastAPI investigation endpoint (minimal)
-- 359 passing tests across M1–M9
+- 416 passing tests across M1–M9 and Module B
 
 ### Verified M9 run (canonical example)
 
@@ -507,7 +596,7 @@ These are known boundaries of the current corpus and infrastructure, not failure
 ## Repository Structure
 
 ```text
-SmartESS/
+BurnInGuard AI (repository root)/
 ├── README.md                          # This file
 ├── PRD.md                             # Product requirements (BurnInGuard AI naming)
 ├── architecture.md                    # System architecture

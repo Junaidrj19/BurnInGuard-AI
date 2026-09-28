@@ -16,6 +16,54 @@ DEFAULT_BASE_URL = "https://api.experiential.ai/v1/"
 # Transient conditions worth retrying: rate limits and upstream/server errors.
 RETRYABLE_STATUS_CODES = {408, 409, 425, 429, 500, 502, 503, 504, 529}
 
+# Rate-limit backoff. Token-per-minute quotas reset on a ~60s window, so a
+# retry must be able to wait long enough to land in the next window; the
+# server-error backoff (2s/4s) cannot. Capped so a request never hangs
+# indefinitely on a malformed or hostile header value.
+RATE_LIMIT_FALLBACK_SLEEP_SECONDS = 20.0
+RATE_LIMIT_MAX_SLEEP_SECONDS = 65.0
+
+_DURATION_UNITS = {"ms": 0.001, "s": 1.0, "m": 60.0, "h": 3600.0}
+
+
+def _parse_duration_seconds(raw: str) -> Optional[float]:
+    """Parse a provider retry hint into seconds.
+
+    Accepts a bare number of seconds (`Retry-After: 30`) and the compound
+    duration strings Groq returns on `x-ratelimit-reset-*` (`7.66s`, `2m59.56s`,
+    `120ms`). Returns None when the value is not a duration — an HTTP-date
+    `Retry-After` is valid per spec but not emitted here, and guessing at it
+    would be worse than falling back to the default delay.
+    """
+    text = raw.strip().lower()
+    if not text:
+        return None
+    try:
+        return max(0.0, float(text))
+    except ValueError:
+        pass
+
+    total = 0.0
+    number = ""
+    unit = ""
+    matched = False
+    for char in text:
+        if char.isdigit() or char == ".":
+            if unit:
+                if number and unit in _DURATION_UNITS:
+                    total += float(number) * _DURATION_UNITS[unit]
+                    matched = True
+                number, unit = "", ""
+            number += char
+        elif char.isalpha():
+            unit += char
+        else:
+            return None
+    if number and unit in _DURATION_UNITS:
+        total += float(number) * _DURATION_UNITS[unit]
+        matched = True
+    return max(0.0, total) if matched else None
+
 
 class ExperientialClient(LLMClient):
     """OpenAI-compatible chat-completions client.
@@ -74,11 +122,37 @@ class ExperientialClient(LLMClient):
                     continue
                 raise
             if resp.status_code in RETRYABLE_STATUS_CODES and attempt < self._max_retries:
-                time.sleep(min(2.0 * (attempt + 1), 8.0))
+                time.sleep(self._retry_delay(resp, attempt))
                 continue
             resp.raise_for_status()
             return resp.json()
         raise RuntimeError("unreachable")  # pragma: no cover
+
+    def _retry_delay(self, resp: httpx.Response, attempt: int) -> float:
+        """Seconds to wait before retrying a retryable response.
+
+        Rate limits are handled differently from server errors. A 429 from a
+        token-per-minute quota does not clear until the provider's one-minute
+        window rolls over, so the general 2s/4s backoff guarantees the retry is
+        rejected too and simply burns the retry budget against an identical
+        oversized request. The provider states the true wait itself, so honour
+        it: `Retry-After`, else Groq's `x-ratelimit-reset-*` hint, else fall back
+        to a rate-limit-appropriate delay rather than the server-error one.
+        """
+        if resp.status_code != 429:
+            return min(2.0 * (attempt + 1), 8.0)
+
+        for header in ("retry-after", "x-ratelimit-reset-tokens", "x-ratelimit-reset-requests"):
+            raw = resp.headers.get(header)
+            if not raw:
+                continue
+            seconds = _parse_duration_seconds(raw)
+            if seconds is not None:
+                # Small cushion so the retry lands after the window has rolled over,
+                # and a ceiling so a pathological header cannot hang the request.
+                return min(seconds + 1.0, RATE_LIMIT_MAX_SLEEP_SECONDS)
+
+        return min(RATE_LIMIT_FALLBACK_SLEEP_SECONDS * (attempt + 1), RATE_LIMIT_MAX_SLEEP_SECONDS)
 
     def chat_completion(
         self,
@@ -113,7 +187,14 @@ class ExperientialClient(LLMClient):
         retries: int = 2,
     ) -> T:
         schema_json = response_model.model_json_schema()
-        instruction = "Respond only with valid JSON matching this schema:\n" + json.dumps(schema_json, indent=2)
+        # Compact separators rather than indent=2. The schema is machine-read by
+        # the model, so the pretty-printer's newlines and indentation were pure
+        # prompt cost — measured at 686 tokens indented vs 406 compact for the
+        # Hypothesis schema, with identical content.
+        instruction = (
+            "Respond only with valid JSON matching this schema:\n"
+            + json.dumps(schema_json, separators=(",", ":"))
+        )
         sys_msg = system + "\n\n" + instruction if system else instruction
 
         last_error: Optional[str] = None

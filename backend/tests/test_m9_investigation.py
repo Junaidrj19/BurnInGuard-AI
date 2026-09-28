@@ -264,6 +264,87 @@ class _StubEvidenceAgent:
         }
 
 
+class TestHypothesisContextIsLossless:
+    """The prompt was compacted to fit a provider token-per-minute budget.
+
+    Compaction removed only provably redundant text. These tests assert that no
+    deterministic finding and no evidence record was dropped in the process, so a
+    future edit cannot quietly turn the size reduction into a loss of science.
+    """
+
+    def _state(self):
+        from backend.agents.investigation.models.investigation import DeterministicResult
+
+        signals = ["RDS_on", "VTH", "IGSS"]
+        results = []
+        for sig in signals:
+            results.append(DeterministicResult(
+                tool_name="calculate_drift", tool_version="1.0.0",
+                input_summary={"signal": sig, "n": 501, "baseline": 7.3936312644681434},
+                output={"first": 7.3936312644681434, "last": 7.374710411448219,
+                        "absolute_drift": -0.01892085301992452, "percent_drift": -0.2559074471410711},
+                provenance={"method": "first_vs_last", "signal": sig},
+            ))
+            results.append(DeterministicResult(
+                tool_name="compare_population", tool_version="1.0.0",
+                input_summary={"signal": sig, "n": 501, "reference_n": 25050},
+                output={"module_mean": 7.293541956920851, "z_score": 1.0933955629799104},
+                provenance={"reference_artifact": "ref.json", "signal": sig},
+            ))
+        return {
+            "module_id": "syn-mod-0006",
+            "model_id": MODEL_ID,
+            "deterministic_results": results,
+            "evidence_records": [_evidence("ev-1"), _evidence("ev-2")],
+        }, signals, results
+
+    def test_every_tool_result_and_signal_reaches_the_prompt(self):
+        from backend.agents.investigation.hypothesis_agent import HypothesisAgent
+
+        state, signals, results = self._state()
+        ctx = HypothesisAgent()._build_context(state)
+
+        for sig in signals:
+            assert f"[{sig}]" in ctx, f"signal {sig} missing from prompt"
+        assert ctx.count("calculate_drift:") == len(signals)
+        assert ctx.count("compare_population:") == len(signals)
+        # Every numeric output value must still be present at 6 significant digits.
+        assert "z_score=1.09340" in ctx or "z_score=1.0934" in ctx
+        assert "absolute_drift=-0.0189209" in ctx
+
+    def test_every_evidence_record_and_id_reaches_the_prompt(self):
+        from backend.agents.investigation.hypothesis_agent import HypothesisAgent
+
+        state, _, _ = self._state()
+        ctx = HypothesisAgent()._build_context(state)
+        for eid in ("ev-1", "ev-2"):
+            assert eid in ctx
+        assert "evidence_records (2 total)" in ctx
+        assert "evidence text" in ctx
+
+    def test_constant_metadata_is_stated_once_not_per_row(self):
+        from backend.agents.investigation.hypothesis_agent import HypothesisAgent
+
+        state, _, _ = self._state()
+        ctx = HypothesisAgent()._build_context(state)
+        # Run-level constants appear exactly once in the legend.
+        assert ctx.count("observations_per_signal=501") == 1
+        assert ctx.count("reference_population_n=25050") == 1
+        assert ctx.count("first_vs_last") == 1
+        # Redundant per-row metadata is gone entirely.
+        assert "tool_version" not in ctx
+        assert "baseline" not in ctx
+
+    def test_float_rounding_does_not_mutate_state(self):
+        """Rounding is presentational only; the record keeps full precision."""
+        from backend.agents.investigation.hypothesis_agent import HypothesisAgent
+
+        state, _, results = self._state()
+        HypothesisAgent()._build_context(state)
+        assert results[0].output["absolute_drift"] == -0.01892085301992452
+        assert results[0].input_summary["baseline"] == 7.3936312644681434
+
+
 class TestHypothesisValidationRouting:
     def _graph(self):
         from backend.agents.investigation.orchestrator import InvestigationGraph

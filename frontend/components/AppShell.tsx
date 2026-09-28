@@ -1,21 +1,41 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import {
+  PRODUCT_SUBTITLE_SHORT,
+  PRODUCT_WORDMARK,
+} from "@/lib/copy/product";
+
 /**
- * Navigation — UX.md §3.
+ * Navigation — UX.md §3, adapted to the BurnInGuard AI product structure.
  *
- * The four agent stages and the two validation stages are first-class named
- * concepts. The navigation must never make the user guess where the agentic
- * workflow is, and the system is never labelled simply "AI".
+ * The agent stages and the two validation gates remain first-class named
+ * concepts. The agentic workflow is never collapsed behind a generic "AI
+ * Analysis" entry, because the point of the product is that the investigation is
+ * inspectable.
  *
- * `available: false` entries are shown but not linked, because their backend
- * contracts do not exist yet (design.md §10.2). Hiding them would misrepresent
- * the product; linking them would produce a dead end.
+ * Three availability states, deliberately distinct:
+ *
+ *   available   linked; the backend contract exists
+ *   scoped      shown but not linked; the capability IS implemented but needs an
+ *               open component or investigation to address (UX.md §4)
+ *   not-built   shown but not linked, marked N/I; the backend contract does not
+ *               exist (design.md §10.2)
+ *
+ * Conflating `scoped` with `not-built` would misrepresent working capability as
+ * missing, and marking `not-built` as available would produce a dead end. Both
+ * failures are worse than showing the distinction.
  */
+type Availability = "available" | "scoped" | "not-built";
+
 interface NavItem {
   readonly label: string;
   readonly href?: string;
-  readonly available: boolean;
+  readonly availability: Availability;
+  /** For `scoped`: what must be open first. */
+  readonly scope?: "component" | "investigation";
+  /** For `not-built`: why it is absent. Rendered as the tooltip. */
+  readonly absence?: string;
 }
 
 interface NavGroup {
@@ -25,54 +45,95 @@ interface NavGroup {
 
 const NAV: readonly NavGroup[] = [
   {
-    heading: "Investigation",
+    heading: "Screening",
     items: [
-      { label: "Module Explorer", href: "/modules", available: true },
-      { label: "Start Investigation", href: "/investigations/new", available: true },
+      { label: "Components", href: "/components", availability: "available" },
+      { label: "Lots", href: "/lots", availability: "available" },
+      {
+        label: "Stress Runs",
+        availability: "not-built",
+        absence:
+          "No run resource exists. test_id is an attribute on the component summary, not an addressable burn-in run.",
+      },
+      { label: "Telemetry", availability: "scoped", scope: "component" },
+      { label: "Anomaly Detection", availability: "scoped", scope: "component" },
+      {
+        label: "Component Projection",
+        availability: "scoped",
+        scope: "component",
+      },
     ],
   },
   {
-    heading: "M9 Investigation",
+    heading: "Investigation",
     items: [
-      { label: "Investigation History", href: "/history", available: true },
+      { label: "Start Investigation", href: "/investigations/new", availability: "available" },
+      { label: "Investigation Pipeline", availability: "scoped", scope: "investigation" },
+      { label: "Engineering Calculations", availability: "scoped", scope: "investigation" },
+      { label: "Drift Analysis", availability: "scoped", scope: "investigation" },
+      { label: "Evidence Explorer", availability: "scoped", scope: "investigation" },
+      { label: "Hypothesis Comparison", availability: "scoped", scope: "investigation" },
+      { label: "Validation", availability: "scoped", scope: "investigation" },
+      { label: "Engineering Report", availability: "scoped", scope: "investigation" },
+      { label: "Provenance", availability: "scoped", scope: "investigation" },
+    ],
+  },
+  {
+    heading: "Knowledge",
+    items: [
+      { label: "Engineering Knowledge Base", href: "/knowledge", availability: "available" },
     ],
   },
   {
     heading: "System",
     items: [
-      { label: "Pipeline Readiness", href: "/system/readiness", available: true },
+      { label: "Investigation History", href: "/history", availability: "available" },
+      { label: "Pipeline Status", href: "/system/readiness", availability: "available" },
+      { label: "Architecture", href: "/architecture", availability: "available" },
+      {
+        label: "Configuration",
+        availability: "not-built",
+        absence: "No configuration endpoint exists. Configuration is environment-driven.",
+      },
     ],
   },
 ];
 
 function NavLink({ item }: { item: NavItem }) {
-  if (!item.available || !item.href) {
+  if (item.availability === "available" && item.href) {
     return (
-      <span
-        className="flex items-center justify-between gap-[var(--ss-space-2)] px-[var(--ss-space-2)] py-[var(--ss-space-1)] text-[var(--ss-text-muted)]"
-        title="Backend contract not implemented (design.md §10.2)"
+      <Link
+        href={item.href}
+        className="block px-[var(--ss-space-2)] py-[var(--ss-space-1)] text-[var(--ss-text-secondary)] hover:bg-[var(--ss-bg-raised)] hover:text-[var(--ss-text-primary)]"
+        style={{ borderRadius: "var(--ss-radius-sm)" }}
       >
-        <span>{item.label}</span>
-        <span className="ss-field-label shrink-0">N/I</span>
-      </span>
+        {item.label}
+      </Link>
     );
   }
+
+  const isScoped = item.availability === "scoped";
+  const marker = isScoped ? (item.scope === "component" ? "CMP" : "INV") : "N/I";
+  const title = isScoped
+    ? `Scoped to an open ${item.scope}. Open one to reach this view.`
+    : item.absence;
+
   return (
-    <Link
-      href={item.href}
-      className="block px-[var(--ss-space-2)] py-[var(--ss-space-1)] text-[var(--ss-text-secondary)] hover:bg-[var(--ss-bg-raised)] hover:text-[var(--ss-text-primary)]"
-      style={{ borderRadius: "var(--ss-radius-sm)" }}
+    <span
+      className="flex items-center justify-between gap-[var(--ss-space-2)] px-[var(--ss-space-2)] py-[var(--ss-space-1)] text-[var(--ss-text-muted)]"
+      title={title}
     >
-      {item.label}
-    </Link>
+      <span>{item.label}</span>
+      <span className="ss-field-label shrink-0">{marker}</span>
+    </span>
   );
 }
 
 /**
  * AppShell — persistent application shell (UX.md §3).
  *
- * Layout is navigation | content. The context rail is NOT rendered here: per
- * UX.md §4 it is visible "while an investigation is open", so it is owned by
+ * The context rail is NOT rendered here: per UX.md §4 it is visible "while an
+ * investigation is open", so it is owned by
  * `app/investigations/[investigationId]/layout.tsx`. That nested layout does not
  * remount across the investigation sub-routes, which is what makes the rail
  * survive route changes and panel-level API errors (UX.md §4, §31).
@@ -89,9 +150,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             className="ss-mono font-medium tracking-wide text-[var(--ss-text-primary)]"
             style={{ fontSize: "var(--ss-text-title-size)" }}
           >
-            SMARTESS
+            {PRODUCT_WORDMARK}
           </span>
-          <span className="ss-field-label">Scientific Reliability Investigation</span>
+          <span className="ss-field-label">{PRODUCT_SUBTITLE_SHORT}</span>
         </Link>
 
         <Link
@@ -99,7 +160,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           className="border border-[var(--ss-border-strong)] px-[var(--ss-space-2)] py-[var(--ss-space-1)] text-center text-[var(--ss-text-primary)] hover:border-[var(--ss-accent)]"
           style={{ borderRadius: "var(--ss-radius-sm)" }}
         >
-          Mission Control
+          Screening Overview
         </Link>
 
         {NAV.map((group) => (
@@ -111,15 +172,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         ))}
 
-        <div className="mt-auto flex flex-col gap-[var(--ss-space-1)]">
-          <span className="ss-field-label">Workflow</span>
+        <div className="mt-auto flex flex-col gap-[var(--ss-space-2)]">
+          <span className="ss-field-label">Legend</span>
           <p
             className="text-[var(--ss-text-muted)]"
             style={{ fontSize: "var(--ss-text-label-size)" }}
           >
-            Signals, anomaly detection and detector evaluation are scoped to a module.
-            Pipeline trace, evidence, hypotheses, report and provenance are scoped to an
-            investigation. Open one to reach them.
+            <span className="ss-mono">CMP</span> needs an open component.{" "}
+            <span className="ss-mono">INV</span> needs an open investigation.{" "}
+            <span className="ss-mono">N/I</span> not implemented in this backend.
           </p>
         </div>
       </nav>

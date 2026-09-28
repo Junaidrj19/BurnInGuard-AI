@@ -85,7 +85,7 @@ export interface SplitMembership {
 export interface ModuleDetail {
   model_id: string;
   module_summary: ModuleSummary;
-  /** Contains ground-truth fields. Evaluation-only; never a SmartESS output. */
+  /** Contains ground-truth fields. Evaluation-only; never a system output. */
   module_evaluation: Record<string, unknown>;
   /** May be `{note: "module not in timing analysis (healthy or undetected)"}`. */
   timing_analysis: Record<string, unknown>;

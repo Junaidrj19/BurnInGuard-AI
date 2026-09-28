@@ -9,7 +9,7 @@ import { StatusChip } from "@/components/StatusChip";
 import { getCorpus, getReadiness } from "@/lib/api/endpoints";
 import { inferenceChipStatus } from "@/lib/copy/status";
 
-export const metadata = { title: "Pipeline Readiness — SmartESS" };
+export const metadata = { title: "Pipeline Status — BurnInGuard AI" };
 
 /**
  * Pipeline Readiness (UX.md §21, §36).
@@ -30,7 +30,7 @@ export default async function ReadinessPage() {
         <SectionHeader
           level={1}
           title="Pipeline Readiness"
-          subtitle="Which SmartESS artifacts exist in this environment, and the command that produces each one. A missing artifact is a setup state, not an error."
+          subtitle="Which pipeline artifacts exist in this environment, and the command that produces each one. A missing artifact is a setup state, not an error."
         />
         {readiness ? (
           <ReadinessPanel
@@ -208,7 +208,7 @@ export default async function ReadinessPage() {
               {
                 capability: "Observation-level accuracy metrics",
                 reason:
-                  "Observation-level ground truth does not exist; only flag-rate summaries are produced. No precision/recall/F1/FPR is shown per observation.",
+                  "Observation-level post-hoc evaluation labels do not exist; only flag-rate summaries are produced. No precision/recall/F1/FPR is shown per observation.",
                 ref: "design.md §20.13",
               },
             ]}

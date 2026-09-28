@@ -65,10 +65,10 @@ export function ContextRail({ context }: { context: InvestigationContext }) {
 
       {hasModule && (
         <>
-          <Field label="Module">
+          <Field label="Component">
             <MonoId value={context.moduleId} />
           </Field>
-          <Field label="Test">
+          <Field label="Stress Run ID">
             <MonoId value={context.testId} />
           </Field>
           <Field label="Lot">
@@ -99,7 +99,7 @@ export function ContextRail({ context }: { context: InvestigationContext }) {
               <MonoId value={context.detectorVersion} />
             </Field>
           </div>
-          <Field label="Module status">
+          <Field label="Screening status">
             <div className="flex flex-col gap-[var(--ss-space-1)]">
               <StatusChip status={context.moduleStatus} />
               <span

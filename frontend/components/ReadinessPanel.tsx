@@ -86,7 +86,7 @@ export function ReadinessPanel({
 
       <table className="w-full border-collapse text-left">
         <caption className="ss-sr-only">
-          Pipeline readiness: required SmartESS artifacts, their status, expected
+          Pipeline readiness: required pipeline artifacts, their status, expected
           path and producing command.
         </caption>
         <thead>

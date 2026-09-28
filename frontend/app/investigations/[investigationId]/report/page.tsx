@@ -146,7 +146,7 @@ export default async function ReportPage({
                 title={section.title}
                 subtitle={
                   isHumanReview
-                    ? "The final engineering decision remains with the human engineer. SmartESS stores no verdict."
+                    ? "The final engineering decision remains with the human engineer. The system stores no verdict."
                     : undefined
                 }
                 level={3}
@@ -185,7 +185,7 @@ export default async function ReportPage({
                     AWAITING ENGINEER REVIEW
                   </span>
                   <p className="text-[var(--ss-text-muted)]" style={{ maxWidth: "var(--ss-measure-prose)" }}>
-                    No engineer decision is recorded. SmartESS has no field for a
+                    No engineer decision is recorded. The system has no field for a
                     verdict, sign-off or review state, so this cannot be captured here
                     (design.md §20.6).
                   </p>

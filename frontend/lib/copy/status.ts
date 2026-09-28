@@ -70,6 +70,23 @@ const DESCRIPTORS: Record<string, StatusDescriptor> = {
   FLAGGED: { label: "FLAGGED", shape: "plain", colorVar: ATTENTION_STRONG },
   NOT_FLAGGED: { label: "NOT FLAGGED", shape: "muted", colorVar: NEUTRAL },
 
+  /* BurnInGuard screening disposition — DERIVED, never a backend field.
+     See lib/domain/disposition.ts for the derivation and its source.
+
+     `--ss-state-reject` is not used by any disposition. Red stays reserved for
+     system failure and validation rejection: EARLY REJECT is a screening
+     disposition awaiting engineering review, not a confirmed physical failure.
+     EARLY REJECT is separated from FLAG by SHAPE and a glyph, not by a new hue. */
+  PASS: { label: "PASS", shape: "outlined", colorVar: PASS },
+  MONITOR: { label: "MONITOR", shape: "plain", colorVar: ATTENTION },
+  FLAG: { label: "FLAG", shape: "plain", colorVar: ATTENTION_STRONG },
+  EARLY_REJECT: {
+    label: "EARLY REJECT",
+    shape: "gate",
+    colorVar: ATTENTION_STRONG,
+    glyph: "!",
+  },
+
   /* Validation gates */
   PASSED: { label: "PASSED", shape: "gate", colorVar: PASS },
   REJECTED: { label: "REJECTED", shape: "gate", colorVar: REJECT },

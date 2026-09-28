@@ -81,7 +81,7 @@ export const REGISTER_DEFINITIONS: Record<Register, RegisterDefinition> = {
     valueClass: "text-[var(--ss-text-secondary)]",
     badge: "text-[var(--ss-text-label)] border-[var(--ss-reg-groundtruth-border)]",
     meaning:
-      "Injected synthetic ground truth. Never used for training and never a SmartESS output.",
+      "Injected synthetic post-hoc evaluation labels. Never used for training and never a system output.",
   },
   HUMAN_DECISION: {
     label: "AWAITING ENGINEER REVIEW",

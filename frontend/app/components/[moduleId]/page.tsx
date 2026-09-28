@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { DispositionChip } from "@/components/DispositionChip";
 import { EmptyState } from "@/components/EmptyState";
 import { MetricValue } from "@/components/MetricValue";
 import { MonoId } from "@/components/MonoId";
@@ -7,18 +8,35 @@ import { NextAction, WorkflowStrip } from "@/components/NextAction";
 import { Panel, SectionHeader, SplitPanel } from "@/components/Panel";
 import { RegisterBadge } from "@/components/RegisterValue";
 import { StatusChip } from "@/components/StatusChip";
-import { getModule, unavailable } from "@/lib/api/endpoints";
+import { WhyFlagged } from "@/components/WhyFlagged";
+import {
+  getDeterministicResults,
+  getModule,
+  getModuleAnomaly,
+  getModulePopulation,
+  unavailable,
+} from "@/lib/api/endpoints";
 import { asBoolean, asNumber, asString } from "@/lib/investigation";
+import { RUN_LABEL_NOTE } from "@/lib/copy/product";
 import { ANOMALY_QUALIFICATION, SYNTHETIC_NOTE } from "@/lib/copy/states";
+import { screeningDisposition } from "@/lib/domain/disposition";
+import {
+  TERM_POST_HOC_EVALUATION,
+  TERM_POST_HOC_EVALUATION_DETECTOR_NOTE,
+} from "@/lib/domain/terminology";
 
 /**
- * Module Context (UX.md §6).
+ * Component Context (UX.md §6).
  *
- * Establishes the engineering object under investigation. Every value carries its
+ * Establishes the engineering object under screening. Every value carries its
  * epistemic register: identifiers and measurements are DATA, derived rates are
  * CALCULATION, and ground truth is quarantined in its own labelled register.
+ *
+ * The screening disposition is derived in the presentation layer from
+ * `module_anomaly_status` and is rendered together with that source value, so it
+ * is never mistaken for a backend prediction.
  */
-export default async function ModuleContextPage({
+export default async function ComponentContextPage({
   params,
 }: {
   params: Promise<{ moduleId: string }>;
@@ -34,30 +52,55 @@ export default async function ModuleContextPage({
   const profile = unavailable.moduleProfile<never>(moduleId);
   const latest = d.investigations.at(-1);
 
+  // Thresholds, lot counts and — only when an investigation exists — the real
+  // deterministic tool outputs that the "why was this flagged" section needs.
+  // Every one of these is an existing endpoint; nothing is recomputed here.
+  const [anomalyResult, populationResult, determResult] = await Promise.all([
+    getModuleAnomaly(moduleId, d.model_id),
+    getModulePopulation(d.model_id),
+    latest ? getDeterministicResults(latest.investigation_id) : Promise.resolve(null),
+  ]);
+
+  const anomaly = anomalyResult.kind === "ok" ? anomalyResult.data : null;
+  const population = populationResult.kind === "ok" ? populationResult.data : null;
+  const deterministicResults =
+    determResult && determResult.kind === "ok" ? determResult.data.results : null;
+
+  const disposition = screeningDisposition(
+    asString(s.module_anomaly_status),
+    deterministicResults,
+  );
+
   return (
     <>
       <Panel>
         <SectionHeader
           level={1}
-          title="Module Context"
-          subtitle="The engineering object being investigated, and the frozen detector that scored it."
+          title="Component Context"
+          subtitle="The engineering object being screened, and the frozen detector that scored it."
           actions={<RegisterBadge register="DATA" />}
         />
         <div className="flex flex-col gap-[var(--ss-space-4)] p-[var(--ss-space-4)]">
           <WorkflowStrip
-            current="Module"
+            current="Component"
             steps={[
-              { label: "Module" },
-              { label: "Signals", href: `/modules/${moduleId}/signals` },
-              { label: "M7 Anomaly", href: `/modules/${moduleId}/anomaly` },
-              { label: "M8 Evaluation", href: `/modules/${moduleId}/evaluation` },
+              { label: "Component" },
+              { label: "Signals", href: `/components/${moduleId}/signals` },
+              { label: "Anomaly", href: `/components/${moduleId}/anomaly` },
+              { label: "Evaluation", href: `/components/${moduleId}/evaluation` },
+              { label: "Component Projection", href: `/components/${moduleId}/prediction` },
               { label: "Start Investigation", href: `/investigations/new?module_id=${moduleId}` },
             ]}
           />
 
           <dl className="grid grid-cols-2 gap-[var(--ss-space-4)] lg:grid-cols-4">
-            <MetricValue label="Module" value={s.module_id} register="DATA" />
-            <MetricValue label="Test" value={s.test_id} register="DATA" />
+            <MetricValue label="Component ID" value={s.module_id} register="DATA" />
+            <MetricValue
+              label="Stress Run ID"
+              value={s.test_id}
+              register="DATA"
+              note={RUN_LABEL_NOTE}
+            />
             <MetricValue label="Lot" value={s.lot_id} register="DATA" />
             <MetricValue label="Dataset" value={s.dataset_id} register="DATA" />
             <MetricValue
@@ -71,16 +114,28 @@ export default async function ModuleContextPage({
             <MetricValue label="Detector version" value={d.model.detector_version} register="DATA" />
           </dl>
 
-          <div className="flex flex-wrap items-center gap-[var(--ss-space-3)]">
-            <span className="ss-field-label">Module status</span>
-            <StatusChip
-              status={asString(s.module_anomaly_status)}
-              suffix={s.anomaly_rate !== null ? String(s.anomaly_rate) : undefined}
-            />
-            <span className="text-[var(--ss-text-muted)]">{ANOMALY_QUALIFICATION}</span>
+          <div className="flex flex-col gap-[var(--ss-space-2)] border-t border-[var(--ss-border-subtle)] pt-[var(--ss-space-3)]">
+            <span className="ss-field-label">Screening disposition</span>
+            <DispositionChip derivation={disposition} showRule />
+            <div className="flex flex-wrap items-center gap-[var(--ss-space-3)]">
+              <span className="ss-field-label">module_anomaly_status</span>
+              <StatusChip
+                status={asString(s.module_anomaly_status)}
+                suffix={s.anomaly_rate !== null ? String(s.anomaly_rate) : undefined}
+              />
+              <span className="text-[var(--ss-text-muted)]">{ANOMALY_QUALIFICATION}</span>
+            </div>
           </div>
         </div>
       </Panel>
+
+      {/* ── detection → explanation bridge ──────────────────────────── */}
+      <WhyFlagged
+        summary={s}
+        anomaly={anomaly}
+        population={population}
+        deterministicResults={deterministicResults}
+      />
 
       <SplitPanel
         ratio="balanced"
@@ -141,11 +196,11 @@ export default async function ModuleContextPage({
         }
       />
 
-      {/* ── ground truth, quarantined ───────────────────────────────── */}
+      {/* ── post-hoc evaluation value, quarantined ──────────────────── */}
       <Panel>
         <SectionHeader
-          title="Ground truth"
-          subtitle="Injected synthetic labels for this module. Evaluation-only — never used for training, never a SmartESS output."
+          title={TERM_POST_HOC_EVALUATION}
+          subtitle={TERM_POST_HOC_EVALUATION_DETECTOR_NOTE}
           level={3}
           actions={<RegisterBadge register="GROUND_TRUTH" />}
         />
@@ -178,7 +233,7 @@ export default async function ModuleContextPage({
                 className="text-[var(--ss-text-muted)]"
                 style={{ fontSize: "var(--ss-text-label-size)" }}
               >
-                Shown so the detector&rsquo;s behaviour can be judged. SmartESS does not use
+                Shown so the detector&rsquo;s behaviour can be judged. The detector does not use
                 these labels to reach a conclusion about the module.
               </p>
             </div>
@@ -189,7 +244,7 @@ export default async function ModuleContextPage({
       {/* ── module profile is not wired in ──────────────────────────── */}
       <Panel>
         <SectionHeader
-          title="Module profile"
+          title="Component profile"
           subtitle="Datasheet-derived ratings, thermal specification and acceptance criteria."
           level={3}
         />
@@ -256,7 +311,7 @@ export default async function ModuleContextPage({
       </Panel>
 
       <NextAction
-        href={`/modules/${moduleId}/signals`}
+        href={`/components/${moduleId}/signals`}
         label="Inspect Signals"
         hint="the eight measured baseline signals over the stress history"
       />

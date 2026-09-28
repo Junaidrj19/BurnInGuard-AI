@@ -8,6 +8,10 @@ import { StatusChip } from "@/components/StatusChip";
 import { AccessibleDataTable } from "@/components/AccessibleDataTable";
 import { getEvaluation, getInvestigation } from "@/lib/api/endpoints";
 import { asBoolean, asNumber, asString, raw } from "@/lib/investigation";
+import {
+  TERM_POST_HOC_EVALUATION,
+  TERM_POST_HOC_EVALUATION_DETECTOR_NOTE,
+} from "@/lib/domain/terminology";
 
 /**
  * M8 Detector Evaluation, investigation-scoped (UX.md §9).
@@ -19,7 +23,7 @@ import { asBoolean, asNumber, asString, raw } from "@/lib/investigation";
  *  · Ground truth (`health_state`, `degradation_mechanism`, `degradation_stage`,
  *    `onset_cycle`, `cycle_measurable`, `degradation_severity`, `damage_index_end`,
  *    `y_true`) is SYNTHETIC and EVALUATION-ONLY. It is quarantined in its own
- *    hatched register and never shown as a SmartESS output (design.md §3.4).
+ *    hatched register and never shown as a BurnInGuard output (design.md §3.4).
  *  · `lead_vs_onset` is negative in this dataset — the detector fires AFTER onset.
  *    It is labelled with its direction and never framed as early warning
  *    (design.md §19.3).
@@ -51,7 +55,7 @@ export default async function EvaluationPage({
     return (
       <Panel>
         <SectionHeader
-          level={1} title="M8 Detector Evaluation" />
+          level={1} title="Detector Evaluation" />
         <div className="p-[var(--ss-space-4)]">
           <EmptyState state="NO_DATA" body="No M8 evaluation was recorded for this investigation." />
         </div>
@@ -64,7 +68,7 @@ export default async function EvaluationPage({
       <Panel>
         <SectionHeader
           level={1}
-          title="M8 Detector Evaluation"
+          title="Detector Evaluation"
           subtitle="Evaluation-only layer over the frozen M7 artifacts. It never retrains and never changes a threshold — it measures how the detector behaved."
           actions={<RegisterBadge register="CALCULATION" />}
         />
@@ -199,8 +203,8 @@ export default async function EvaluationPage({
           /* ── ground truth, quarantined ──────────────────────────── */
           <Panel>
             <SectionHeader
-              title="Ground truth"
-              subtitle="Injected synthetic labels. Evaluation-only — never used for training, never a SmartESS output."
+              title={TERM_POST_HOC_EVALUATION}
+              subtitle={TERM_POST_HOC_EVALUATION_DETECTOR_NOTE}
               level={3}
               actions={<RegisterBadge register="GROUND_TRUTH" />}
             />
@@ -243,7 +247,7 @@ export default async function EvaluationPage({
               </div>
               <p className="text-[var(--ss-text-muted)]" style={{ fontSize: "var(--ss-text-label-size)" }}>
                 Comparing y_true against y_pred_module is how M8 measures the detector.
-                It is not what SmartESS tells an engineer about the hardware.
+                It is not what BurnInGuard AI tells an engineer about the hardware.
               </p>
             </div>
           </Panel>

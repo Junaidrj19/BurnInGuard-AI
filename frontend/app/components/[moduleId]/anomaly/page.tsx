@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
 import { MetricValue } from "@/components/MetricValue";
+import { ModuleAExplainability } from "@/components/ModuleAExplainability";
 import { NextAction, WorkflowStrip } from "@/components/NextAction";
 import { Panel, SectionHeader, SplitPanel } from "@/components/Panel";
 import { RegisterBadge } from "@/components/RegisterValue";
@@ -9,6 +10,10 @@ import { StatusChip } from "@/components/StatusChip";
 import { getModule, getModuleAnomaly } from "@/lib/api/endpoints";
 import { asBoolean, asString } from "@/lib/investigation";
 import { ANOMALY_QUALIFICATION } from "@/lib/copy/states";
+import {
+  TERM_POST_HOC_EVALUATION,
+  TERM_POST_HOC_EVALUATION_DETECTOR_NOTE,
+} from "@/lib/domain/terminology";
 
 /**
  * M7 Anomaly Detection (UX.md §8).
@@ -39,7 +44,7 @@ export default async function ModuleAnomalyPage({
     return (
       <Panel>
         <SectionHeader
-          level={1} title="M7 Anomaly Detection" />
+          level={1} title="Anomaly Detection" />
         <div className="p-[var(--ss-space-4)]">
           <ErrorState result={anomalyResult} />
         </div>
@@ -64,18 +69,18 @@ export default async function ModuleAnomalyPage({
       <Panel>
         <SectionHeader
           level={1}
-          title="M7 Anomaly Detection"
+          title="Anomaly Detection"
           subtitle="Unsupervised Isolation Forest over M6 v1 observation features. Frozen: this page reads scores, it never re-scores."
           actions={<RegisterBadge register="DATA" />}
         />
         <div className="flex flex-col gap-[var(--ss-space-4)] p-[var(--ss-space-4)]">
           <WorkflowStrip
-            current="M7 Anomaly"
+            current="Anomaly"
             steps={[
-              { label: "Module", href: `/modules/${moduleId}` },
-              { label: "Signals", href: `/modules/${moduleId}/signals` },
-              { label: "M7 Anomaly" },
-              { label: "M8 Evaluation", href: `/modules/${moduleId}/evaluation` },
+              { label: "Component", href: `/components/${moduleId}` },
+              { label: "Signals", href: `/components/${moduleId}/signals` },
+              { label: "Anomaly" },
+              { label: "Evaluation", href: `/components/${moduleId}/evaluation` },
               { label: "Start Investigation", href: `/investigations/new?module_id=${moduleId}` },
             ]}
           />
@@ -87,7 +92,7 @@ export default async function ModuleAnomalyPage({
           >
             <div className="flex flex-col gap-[var(--ss-space-1)]">
               <span className="ss-field-label" style={{ color: "var(--ss-state-pass)" }}>
-                M7 answers
+                Anomaly detection answers
               </span>
               <p className="text-[var(--ss-text-secondary)]">
                 Which observations and modules were flagged as statistically unusual by
@@ -96,7 +101,7 @@ export default async function ModuleAnomalyPage({
             </div>
             <div className="flex flex-col gap-[var(--ss-space-1)]">
               <span className="ss-field-label" style={{ color: "var(--ss-state-reject)" }}>
-                M7 does not answer
+                Anomaly detection does not answer
               </span>
               <p className="text-[var(--ss-text-secondary)]">
                 What physically failed. {ANOMALY_QUALIFICATION}
@@ -116,7 +121,7 @@ export default async function ModuleAnomalyPage({
       {/* ── three verdicts, deliberately not merged ─────────────────── */}
       <Panel>
         <SectionHeader
-          title="Module-level verdicts"
+          title="Component-level verdicts"
           subtitle="Three independent statements about the same module. They are not the same quantity and are never combined."
           level={3}
         />
@@ -136,11 +141,11 @@ export default async function ModuleAnomalyPage({
             note="max |robust normalised deviation| ≥ 3.0 — not the model"
           />
           <VerdictCard
-            title="Ground truth"
+            title={TERM_POST_HOC_EVALUATION}
             register="GROUND_TRUTH"
             flag={groundTruth}
             label="y_true"
-            note="Injected synthetic label. Evaluation-only; not a SmartESS output."
+            note={TERM_POST_HOC_EVALUATION_DETECTOR_NOTE}
             hatched
           />
         </div>
@@ -168,6 +173,12 @@ export default async function ModuleAnomalyPage({
           </div>
         )}
       </Panel>
+
+      <ModuleAExplainability
+        summary={a.module_summary}
+        anomaly={a}
+        groundTruth={ev as unknown as Record<string, unknown>}
+      />
 
       <SplitPanel
         ratio="balanced"
@@ -241,8 +252,8 @@ export default async function ModuleAnomalyPage({
       />
 
       <NextAction
-        href={`/modules/${moduleId}/evaluation`}
-        label="Inspect Detector Evaluation"
+        href={`/components/${moduleId}/evaluation`}
+        label="Inspect Evaluation"
         hint="how the detector behaves across the evaluated population"
       />
     </>

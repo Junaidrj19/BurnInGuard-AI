@@ -125,7 +125,7 @@ export default async function WorkspacePage({
           <Panel>
             <SectionHeader
               title="Validation"
-              subtitle="Automated gates over the model's output. These are what make SmartESS more than an LLM wrapper."
+              subtitle="Automated gates over the model's output. These are what make the investigation more than an LLM wrapper."
               level={3}
               actions={
                 <Link

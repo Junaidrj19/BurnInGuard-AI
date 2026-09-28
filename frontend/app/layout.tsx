@@ -4,9 +4,9 @@ import "./globals.css";
 import { AppShell } from "@/components/AppShell";
 
 export const metadata: Metadata = {
-  title: "SmartESS — Scientific Reliability Investigation",
+  title: "BurnInGuard AI — Burn-In Screening & Engineering Investigation",
   description:
-    "Engineer-facing investigation platform over the SmartESS M1–M9 reliability-intelligence pipeline.",
+    "Component-agnostic burn-in screening and engineering investigation platform. Demonstration case: SIH power module on synthetic power-cycling reliability data.",
 };
 
 /**

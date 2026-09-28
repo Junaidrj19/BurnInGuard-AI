@@ -1,5 +1,5 @@
 /**
- * Typed mirrors of the SmartESS backend contracts.
+ * Typed mirrors of the BurnInGuard AI backend contracts.
  *
  * SOURCE OF TRUTH — these types mirror Python models. Do not add a field here
  * that does not exist in the backend:
@@ -14,7 +14,7 @@
  *   EvidenceRecord
  *     → backend/knowledge/models.py
  *
- * Once the SmartESS API is running these can be regenerated from its OpenAPI
+ * Once the BurnInGuard API is running these can be regenerated from its OpenAPI
  * schema (`npm run types:generate`, see design.md §10.5). Until then they are
  * hand-mirrored, and `docs/m10/design.md` §18.2 applies: records are written
  * with `exclude_none=True`, so optional fields may be ABSENT rather than null.
@@ -121,6 +121,13 @@ export interface DeterministicResult {
   input_summary: Record<string, unknown>;
   output: Record<string, unknown>;
   provenance: Record<string, unknown>;
+}
+
+/** `GET /investigations/{id}/deterministic-results` (backend/api/investigations.py:118). */
+export interface DeterministicResultsBundle {
+  investigation_id: string;
+  n_results: number;
+  results: DeterministicResult[];
 }
 
 export interface ProvenanceEntry {
@@ -258,4 +265,90 @@ export interface InvestigationCreated {
 /** Response of `GET /health`. */
 export interface HealthResponse {
   status: string;
+}
+
+/* ── Component projection (Module B artifact) ───────────────────────────── */
+
+export interface ModuleBPredictionResponse {
+  module_id: string;
+  horizon: {
+    feature_cycles: number[];
+    feature_hours: number[];
+    target_cycle: number;
+    target_hours: number;
+    ps_states_168h: string;
+    note: string;
+  };
+  prediction: {
+    predicted_value_168h: number;
+    predicted_terminal_rds_on_mohm: number;
+    label: string;
+    features: {
+      "RDS_on@0": number;
+      "RDS_on@14400": number;
+    };
+  };
+  ground_truth: {
+    actual_terminal_rds_on_mohm: number | null;
+    note: string;
+  };
+  evaluation: {
+    absolute_error: number | null;
+    population_mae: number;
+    naive_baseline_mae: number;
+    improvement: number | null;
+    improvement_direction: string;
+  };
+  safety: {
+    safety_slope_pct_per_hour: number | null;
+    predicted_drift_rate_pct_per_hour: number | null;
+    predicted_total_relative_change_pct: number | null;
+    early_reject: boolean | null;
+    provenance?: Record<string, unknown>;
+  };
+  provenance: {
+    model_id: string;
+    model_version: string;
+    algorithm: string;
+    preprocessing: string;
+    features: string[];
+    target: string;
+    target_cycle: number;
+    split: Record<string, unknown>;
+    random_seed: number;
+    n_train: number;
+    n_test: number;
+    note: string;
+  };
+}
+
+export interface ModuleBEvaluationResponse {
+  model_id: string;
+  algorithm: string;
+  features: string[];
+  target: string;
+  target_cycle: number;
+  target_hours: number;
+  n_train: number;
+  n_test: number;
+  mae: number;
+  naive_mae: number;
+  train_mae: number;
+  /**
+   * Derived server-side from (naive_mae - mae) / naive_mae. Optional because an
+   * older running backend may not emit it; consumers must use a nullish guard
+   * (`!= null`), never `!== null`.
+   */
+  improvement?: number | null;
+  improvement_direction?: string;
+  model_comparison: Record<string, { algorithm: string; train_mae: number; test_mae: number }>;
+  model_selection_note: string;
+  split: Record<string, unknown>;
+  random_seed: number;
+  preprocessing: string;
+  model_version: string;
+  dataset_id: string;
+  training_timestamp: string;
+  safety: Record<string, unknown>;
+  horizon: Record<string, unknown>;
 }

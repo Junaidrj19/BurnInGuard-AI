@@ -52,7 +52,7 @@ export async function GET(
   if (format === "report.md") {
     // Provenance and the synthetic label must survive export (design.md §10.6).
     const header = [
-      `# SmartESS Engineering Report`,
+      `# BurnInGuard AI Engineering Report`,
       ``,
       `- investigation_id: \`${report.investigation_id}\``,
       `- module_id: \`${report.module_id}\``,

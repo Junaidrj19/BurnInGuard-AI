@@ -4,7 +4,7 @@ import type { GateOutcome } from "@/lib/investigation";
 /**
  * GateResult — a validation gate outcome (UX.md §15; design.md §6.1).
  *
- * The gates are the strongest available evidence that SmartESS is not an LLM
+ * The gates are the strongest available evidence that BurnInGuard AI is not an LLM
  * wrapper, so they are rendered prominently with their issue list verbatim.
  *
  * Critical nuance (design.md §14.10): after the retry budget is exhausted the

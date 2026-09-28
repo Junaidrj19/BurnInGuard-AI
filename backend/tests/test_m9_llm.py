@@ -131,9 +131,12 @@ class TestLLMSettings:
 
 
 class _StubResponse:
-    def __init__(self, payload=None, status_code: int = 200, content: str = ""):
+    def __init__(self, payload=None, status_code: int = 200, content: str = "", headers=None):
         self._payload = payload if payload is not None else _chat_payload(content)
         self.status_code = status_code
+        # Real httpx.Response always exposes a headers mapping; the retry path
+        # reads provider rate-limit hints from it.
+        self.headers = httpx.Headers(headers or {})
 
     def json(self):
         return self._payload
@@ -217,6 +220,84 @@ class TestStructuredOutput:
         with pytest.raises(httpx.HTTPStatusError) as excinfo:
             client.structured_completion([LLMMessage(role="user", content="x")], Hypothesis)
         assert SYNTHETIC_KEY not in str(excinfo.value)
+
+    def test_rate_limit_backoff_honours_provider_retry_hint(self, monkeypatch):
+        """A 429 must wait for the provider's stated window, not the 2s/4s default.
+
+        Token-per-minute quotas do not clear for ~60s, so retrying on the
+        server-error backoff guarantees a second rejection.
+        """
+        from backend.llm.providers.experiential import (
+            RATE_LIMIT_FALLBACK_SLEEP_SECONDS,
+            RATE_LIMIT_MAX_SLEEP_SECONDS,
+        )
+
+        client = _client(max_retries=1)
+
+        # Retry-After in plain seconds.
+        delay = client._retry_delay(_StubResponse(status_code=429, headers={"retry-after": "30"}), 0)
+        assert 30.0 <= delay <= RATE_LIMIT_MAX_SLEEP_SECONDS
+
+        # Groq's compound duration form on x-ratelimit-reset-tokens.
+        delay = client._retry_delay(
+            _StubResponse(status_code=429, headers={"x-ratelimit-reset-tokens": "2m59.56s"}), 0
+        )
+        assert delay == RATE_LIMIT_MAX_SLEEP_SECONDS  # clamped, never unbounded
+
+        delay = client._retry_delay(
+            _StubResponse(status_code=429, headers={"x-ratelimit-reset-tokens": "7.66s"}), 0
+        )
+        assert 8.0 <= delay <= 10.0
+
+        # No usable hint: still a rate-limit-appropriate wait, not 2s.
+        delay = client._retry_delay(_StubResponse(status_code=429), 0)
+        assert delay >= RATE_LIMIT_FALLBACK_SLEEP_SECONDS
+
+        # A server error keeps the short backoff.
+        assert client._retry_delay(_StubResponse(status_code=503), 0) == 2.0
+
+    def test_rate_limit_retry_waits_before_reissuing(self, monkeypatch):
+        """The retry must actually sleep, so an oversized request is not re-fired at once."""
+        client = _client(max_retries=1)
+        slept: list[float] = []
+        calls = {"n": 0}
+
+        def fake_post(url, json=None):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return _StubResponse(status_code=429, headers={"retry-after": "25"})
+            return _StubResponse(content='{"module_id": "m", "candidates": []}')
+
+        monkeypatch.setattr(client._http, "post", fake_post)
+        monkeypatch.setattr(
+            "backend.llm.providers.experiential.time.sleep", lambda s: slept.append(s)
+        )
+        out = client.structured_completion([LLMMessage(role="user", content="x")], Hypothesis)
+        assert out.module_id == "m"
+        assert calls["n"] == 2
+        assert slept and slept[0] >= 25.0
+
+    def test_structured_schema_is_sent_compactly(self):
+        """The injected schema must not carry pretty-printer whitespace.
+
+        The schema is machine-read, so indentation was pure prompt cost against a
+        provider token-per-minute budget.
+        """
+        client = _client()
+        captured = {}
+
+        def fake_post(payload):
+            captured["payload"] = payload
+            return _chat_payload('{"module_id": "m", "candidates": []}')
+
+        client._post = fake_post  # type: ignore[assignment]
+        client.structured_completion([LLMMessage(role="user", content="x")], Hypothesis)
+        system_message = captured["payload"]["messages"][0]["content"]
+        assert "Respond only with valid JSON matching this schema:" in system_message
+        schema_text = system_message.split("schema:\n", 1)[1]
+        assert schema_text.startswith("{") and schema_text.endswith("}")
+        assert "\n" not in schema_text
+        assert '": "' not in schema_text  # compact separators, no ", " / ": "
 
     def test_extract_json_tolerates_fences_and_prose(self):
         inner = '{"a": 1}'

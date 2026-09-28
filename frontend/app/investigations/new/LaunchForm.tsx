@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
 import { MonoId } from "@/components/MonoId";
 import { StatusChip } from "@/components/StatusChip";
@@ -42,15 +42,39 @@ export function LaunchForm({
     status: "idle",
   });
 
+  // Duplicate-submission guard. `useFormStatus` already disables the button for
+  // the in-flight window, but two cases slip past a disabled attribute alone:
+  // a second activation dispatched in the same tick, before React has committed
+  // the pending state; and an immediate resubmit after a failure. The second
+  // matters because a provider rate-limit rejection is the likeliest failure —
+  // re-firing the identical request at once would compound the rate limit
+  // instead of letting its window roll over. Each launch starts a real
+  // synchronous pipeline run, so a duplicate is not idempotent: it would create
+  // a second investigation record and consume provider quota twice.
+  const submittingRef = useRef(false);
+  useEffect(() => {
+    submittingRef.current = false;
+  }, [state]);
+
   return (
-    <form action={action} className="flex flex-col gap-[var(--ss-space-4)]">
+    <form
+      action={action}
+      onSubmit={(event) => {
+        if (submittingRef.current) {
+          event.preventDefault();
+          return;
+        }
+        submittingRef.current = true;
+      }}
+      className="flex flex-col gap-[var(--ss-space-4)]"
+    >
       <input type="hidden" name="module_id" value={moduleId} />
       <input type="hidden" name="model_id" value={modelId} />
       <input type="hidden" name="dataset_id" value={datasetId} />
 
       {/* ── configuration review ─────────────────────────────────────── */}
       <dl className="grid grid-cols-1 gap-[var(--ss-space-3)] sm:grid-cols-2">
-        <Row label="Module">
+        <Row label="Component">
           <MonoId value={moduleId} />
         </Row>
         <Row label="Model">
@@ -132,7 +156,7 @@ export function LaunchForm({
       >
         <span className="ss-field-label">What this will do</span>
         <ol className="flex flex-col gap-[var(--ss-space-1)] text-[var(--ss-text-secondary)]">
-          <li>1. Load the frozen M6/M7/M8 artifacts for this module, read-only.</li>
+          <li>1. Load the frozen M6/M7/M8 artifacts for this component, read-only.</li>
           <li>2. Run the deterministic engineering tools over the signal trajectory.</li>
           <li>3. Build retrieval queries and search the reliability knowledge base.</li>
           <li>4. Ask the language model for competing candidate mechanisms.</li>

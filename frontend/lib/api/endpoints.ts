@@ -1,5 +1,5 @@
 /**
- * The SmartESS API surface consumed by the frontend.
+ * The BurnInGuard AI API surface consumed by the frontend.
  *
  * Verified against `backend/api/app.py`, `backend/api/investigations.py`,
  * `backend/api/modules.py` and `backend/api/system.py`.
@@ -11,6 +11,7 @@
 
 import { api, notImplemented, type ApiResult } from "@/lib/api/client";
 import type {
+  DeterministicResultsBundle,
   HealthResponse,
   InvestigationCreated,
   InvestigationListItem,
@@ -18,6 +19,8 @@ import type {
   InvestigationReport,
   InvestigationRequest,
   Hypothesis,
+  ModuleBPredictionResponse,
+  ModuleBEvaluationResponse,
 } from "@/lib/types/backend";
 import type {
   Corpus,
@@ -213,6 +216,23 @@ export function getInvestigationHypothesis(
 }
 
 /**
+ * `GET /investigations/{id}/deterministic-results` — the fixed engineering tools
+ * the InvestigationAgent actually ran, with their versions, inputs, outputs and
+ * provenance.
+ *
+ * This is the real source for the Engineering Calculations and Drift Analysis
+ * views. The frontend renders these outputs; it never recomputes them.
+ */
+export function getDeterministicResults(
+  investigationId: string,
+): Promise<ApiResult<DeterministicResultsBundle>> {
+  return api.request<DeterministicResultsBundle>(
+    `/investigations/${encodeURIComponent(investigationId)}/deterministic-results`,
+    { revalidateSeconds: CACHE_ARTIFACT },
+  );
+}
+
+/**
  * `POST /investigations` — **synchronous**. The request blocks for the whole
  * graph run, including every LLM call, so a real run can take minutes
  * (design.md §19.10). No progress is simulated while it is in flight.
@@ -224,6 +244,29 @@ export function createInvestigation(
     method: "POST",
     body,
     timeoutMs: 15 * 60 * 1000,
+  });
+}
+
+/**
+ * `GET /modules/{id}/prediction` — component projection (forward terminal estimate).
+ *
+ * Deterministic. The backend returns the recorded ridge-model prediction scored on
+ * RDS_on@0 and RDS_on@14400, plus ground truth (read only after prediction,
+ * never fed to the model), evaluation, safety and provenance.
+ */
+export function getModulePrediction(
+  moduleId: string,
+): Promise<ApiResult<ModuleBPredictionResponse>> {
+  return api.request<ModuleBPredictionResponse>(
+    `/modules/${encodeURIComponent(moduleId)}/prediction`,
+    { revalidateSeconds: CACHE_ARTIFACT },
+  );
+}
+
+/** `GET /prediction/evaluation` — component projection held-out evaluation record. */
+export function getPredictionEvaluation(): Promise<ApiResult<ModuleBEvaluationResponse>> {
+  return api.request<ModuleBEvaluationResponse>("/prediction/evaluation", {
+    revalidateSeconds: CACHE_ARTIFACT,
   });
 }
 
@@ -250,4 +293,10 @@ export const unavailable = {
       `POST /investigations/${investigationId}/review`,
       "design.md §20.6 — no field exists for an engineer decision",
     ),
+  /**
+   * A stress / reliability run is not an addressable resource. `test_id` is a column
+   * on the component summary, so there is no run lifecycle to list.
+   */
+  stressRuns: <T,>() =>
+    notImplemented<T>("GET /runs", "no run resource exists; test_id is a component attribute"),
 } as const;

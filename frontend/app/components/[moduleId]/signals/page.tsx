@@ -78,10 +78,10 @@ export default async function ModuleSignalsPage({
           <WorkflowStrip
             current="Signals"
             steps={[
-              { label: "Module", href: `/modules/${moduleId}` },
+              { label: "Component", href: `/components/${moduleId}` },
               { label: "Signals" },
-              { label: "M7 Anomaly", href: `/modules/${moduleId}/anomaly` },
-              { label: "M8 Evaluation", href: `/modules/${moduleId}/evaluation` },
+              { label: "Anomaly", href: `/components/${moduleId}/anomaly` },
+              { label: "Evaluation", href: `/components/${moduleId}/evaluation` },
               { label: "Start Investigation", href: `/investigations/new?module_id=${moduleId}` },
             ]}
           />
@@ -130,7 +130,7 @@ export default async function ModuleSignalsPage({
       </Panel>
 
       <NextAction
-        href={`/modules/${moduleId}/anomaly`}
+        href={`/components/${moduleId}/anomaly`}
         label="Inspect Anomaly Detection"
         hint="what the frozen M7 detector flagged, and what it does not claim"
       />

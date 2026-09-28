@@ -8,7 +8,7 @@ import { WorkflowStrip } from "@/components/NextAction";
 import { LaunchForm } from "@/app/investigations/new/LaunchForm";
 import { getModule, getReadiness, listModels } from "@/lib/api/endpoints";
 
-export const metadata = { title: "Start Investigation — SmartESS" };
+export const metadata = { title: "Start Investigation — BurnInGuard AI" };
 
 /**
  * Start Investigation — configuration and review (UX.md §28).
@@ -32,15 +32,15 @@ export default async function NewInvestigationPage({
         <div className="p-[var(--ss-space-4)]">
           <EmptyState
             state="NO_DATA"
-            body="No module was selected. Choose a module first — an investigation is always scoped to one module."
+            body="No component was selected. Choose a component first — an investigation is always scoped to one component."
             detail="expected query parameter: ?module_id=<module_id>"
           >
             <Link
-              href="/modules"
+              href="/components"
               className="ss-field-label w-fit border border-[var(--ss-border-strong)] px-[var(--ss-space-2)] py-[var(--ss-space-1)] hover:border-[var(--ss-accent)]"
               style={{ borderRadius: "var(--ss-radius-sm)" }}
             >
-              Open Module Explorer
+              Open Components
             </Link>
           </EmptyState>
         </div>
@@ -89,10 +89,10 @@ export default async function NewInvestigationPage({
           <WorkflowStrip
             current="Start Investigation"
             steps={[
-              { label: "Module", href: `/modules/${moduleId}` },
-              { label: "Signals", href: `/modules/${moduleId}/signals` },
-              { label: "M7 Anomaly", href: `/modules/${moduleId}/anomaly` },
-              { label: "M8 Evaluation", href: `/modules/${moduleId}/evaluation` },
+              { label: "Component", href: `/components/${moduleId}` },
+              { label: "Signals", href: `/components/${moduleId}/signals` },
+              { label: "Anomaly", href: `/components/${moduleId}/anomaly` },
+              { label: "Evaluation", href: `/components/${moduleId}/evaluation` },
               { label: "Start Investigation" },
             ]}
           />
@@ -107,17 +107,17 @@ export default async function NewInvestigationPage({
         </div>
       </Panel>
 
-      {/* ── existing investigations for this module ─────────────────── */}
+      {/* ── existing investigations for this component ───────────────── */}
       <Panel>
         <SectionHeader
-          title="Existing investigations for this module"
+          title="Existing investigations for this component"
           subtitle="Each run creates a new record. Open an existing one instead of re-running if it already answers the question."
           level={3}
         />
         <div className="p-[var(--ss-space-4)]">
           {existing.length === 0 ? (
             <span className="text-[var(--ss-text-muted)]">
-              No investigation has been recorded for this module.
+              No investigation has been recorded for this component.
             </span>
           ) : (
             <ul className="flex flex-col gap-[var(--ss-space-1)]">

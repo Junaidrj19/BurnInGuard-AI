@@ -25,8 +25,10 @@ const TABS: readonly { href: string; label: string }[] = [
   { href: "", label: "Workspace" },
   { href: "/trace", label: "Pipeline Trace" },
   { href: "/signals", label: "Signal Analysis" },
-  { href: "/anomaly", label: "M7 Anomaly" },
-  { href: "/evaluation", label: "M8 Evaluation" },
+  { href: "/anomaly", label: "Anomaly" },
+  { href: "/evaluation", label: "Evaluation" },
+  { href: "/calculations", label: "Engineering Calculations" },
+  { href: "/drift", label: "Drift Analysis" },
   { href: "/evidence", label: "Evidence" },
   { href: "/hypotheses", label: "Hypotheses" },
   { href: "/report", label: "Report" },
@@ -131,11 +133,11 @@ export default async function InvestigationLayout({
           ))}
           <span className="ml-auto flex items-center gap-[var(--ss-space-2)]">
             <Link
-              href={`/modules/${encodeURIComponent(record.module_id)}`}
+              href={`/components/${encodeURIComponent(record.module_id)}`}
               className="ss-field-label border border-[var(--ss-border-strong)] px-[var(--ss-space-2)] py-[var(--ss-space-1)] text-[var(--ss-text-secondary)] hover:border-[var(--ss-accent)] hover:text-[var(--ss-text-primary)]"
               style={{ borderRadius: "var(--ss-radius-sm)" }}
             >
-              Module context
+              Component context
             </Link>
             <StatusChip status={record.status} />
           </span>

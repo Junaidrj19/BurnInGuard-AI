@@ -1,0 +1,71 @@
+{
+  "model_id": "module-b-ridge-20260922",
+  "algorithm": "ridge",
+  "features": [
+    "RDS_on@0",
+    "RDS_on@14400"
+  ],
+  "target": "RDS_on@100000",
+  "target_cycle": 100000,
+  "target_hours": 166.66666666666666,
+  "n_train": 450,
+  "n_test": 300,
+  "mae": 0.17993662949847827,
+  "naive_mae": 0.18604644707568463,
+  "train_mae": 0.18578252507477303,
+  "model_comparison": {
+    "ridge": {
+      "algorithm": "Ridge",
+      "train_mae": 0.18578252507477303,
+      "test_mae": 0.17993662949847827
+    },
+    "extra_trees": {
+      "algorithm": "ExtraTrees",
+      "train_mae": 0.13587091036716628,
+      "test_mae": 0.1945337693054831
+    },
+    "random_forest": {
+      "algorithm": "RandomForest",
+      "train_mae": 0.12061958824254841,
+      "test_mae": 0.20657720262490034
+    }
+  },
+  "model_selection_note": "Ridge is the default. A tree model is selected only if BOTH ExtraTrees and RandomForest beat Ridge and the best improvement is >10%. Otherwise Ridge is kept, per the approved module guidance.",
+  "split": {
+    "type": "lot_holdout",
+    "train_lots": [
+      "lot-02",
+      "lot-03",
+      "lot-05"
+    ],
+    "test_lots": [
+      "lot-01",
+      "lot-04"
+    ],
+    "n_train_modules": 450,
+    "n_test_modules": 300
+  },
+  "random_seed": 20260922,
+  "preprocessing": "StandardScaler",
+  "model_version": "v1",
+  "dataset_id": "syn-sic-pc-dev-001",
+  "training_timestamp": "2026-09-27T14:39:43Z",
+  "safety": {
+    "safety_slope_pct_per_hour": 0.12000000000000001,
+    "max_relative_change_percent": 20.0,
+    "max_absolute_mohm": 8.0
+  },
+  "horizon": {
+    "feature_cycles": [
+      0,
+      14400
+    ],
+    "feature_hours": [
+      0.0,
+      24.0
+    ],
+    "target_cycle": 100000,
+    "target_hours": 166.6667,
+    "ps_states_168h": "PS specifies 168h; supplied dataset ends at 166.67h. No extrapolation performed."
+  }
+}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AccessibleDataTable } from "@/components/AccessibleDataTable";
+import { DemonstrationCase } from "@/components/DemonstrationCase";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
 import { MetricValue } from "@/components/MetricValue";
@@ -13,25 +14,33 @@ import {
   listInvestigations,
   listModels,
 } from "@/lib/api/endpoints";
-import { ANOMALY_QUALIFICATION, ORIENTATION_SENTENCE, SYNTHETIC_NOTE } from "@/lib/copy/states";
+import {
+  KNOWLEDGE_BASE_NAME,
+  PRODUCT_NAME,
+  PRODUCT_ORIENTATION,
+} from "@/lib/copy/product";
+import { ANOMALY_QUALIFICATION, SYNTHETIC_NOTE } from "@/lib/copy/states";
 import { inferenceChipStatus } from "@/lib/copy/status";
-import { MODULE_ANOMALY_STATUS } from "@/lib/types/backend";
+import { DISPOSITION_LABEL, dispositionCounts } from "@/lib/domain/disposition";
 
-export const metadata = { title: "Mission Control — SmartESS" };
+export const metadata = { title: `Screening Overview — ${PRODUCT_NAME}` };
 
-const CANONICAL_MODULE = "syn-mod-0042";
+/** The component used throughout the demonstration case. */
+const DEMO_COMPONENT = "syn-mod-0042";
 
 /**
- * Mission Control — the engineering workstation entry point (UX.md §5).
+ * Screening Overview — the engineering workstation entry point (UX.md §5).
  *
  * Answers, in the first viewport: what am I looking at, what data exists, what
- * has SmartESS already evaluated, where does the investigation happen, what can I
- * inspect next.
+ * has already been screened, where the investigation happens, what to inspect
+ * next.
  *
  * Every number is read from the backend. When a capability is unavailable the
- * panel says which one and why — it never substitutes a plausible figure.
+ * panel says which one and why — it never substitutes a plausible figure. The
+ * screening dispositions are derived from `module_anomaly_status` and the source
+ * value is rendered beside each one.
  */
-export default async function MissionControlPage() {
+export default async function ScreeningOverviewPage() {
   const [readinessResult, populationResult, modelsResult, investigationsResult, corpusResult] =
     await Promise.all([
       getReadiness(),
@@ -54,7 +63,9 @@ export default async function MissionControlPage() {
     acc[i.status] = (acc[i.status] ?? 0) + 1;
     return acc;
   }, {});
-  const canonical = investigations.filter((i) => i.module_id === CANONICAL_MODULE);
+  const demoInvestigations = investigations.filter((i) => i.module_id === DEMO_COMPONENT);
+
+  const { counts: dispositions, unmapped } = dispositionCounts(population?.by_anomaly_status);
 
   return (
     <>
@@ -65,7 +76,7 @@ export default async function MissionControlPage() {
             className="font-medium text-[var(--ss-text-primary)]"
             style={{ fontSize: "var(--ss-text-title-size)", lineHeight: "var(--ss-leading-tight)" }}
           >
-            Mission Control
+            Screening Overview
           </h1>
           <p
             className="text-[var(--ss-text-primary)]"
@@ -74,17 +85,15 @@ export default async function MissionControlPage() {
               maxWidth: "var(--ss-measure-prose)",
             }}
           >
-            {ORIENTATION_SENTENCE}
+            {PRODUCT_ORIENTATION}
           </p>
           <div className="flex flex-wrap items-center gap-[var(--ss-space-4)]">
             <span className="ss-field-label">
-              API{" "}
-              <StatusChip status={readiness ? "READY" : "NOT_CONFIGURED"} />
+              API <StatusChip status={readiness ? "READY" : "NOT_CONFIGURED"} />
             </span>
             {readiness && (
               <span className="ss-field-label">
-                Inference{" "}
-                <StatusChip status={inferenceChipStatus(readiness.llm)} />
+                Inference <StatusChip status={inferenceChipStatus(readiness.llm)} />
               </span>
             )}
             {model && (
@@ -97,19 +106,20 @@ export default async function MissionControlPage() {
             )}
             <span className="ss-field-label">
               Data origin{" "}
-              <span className="ss-mono normal-case text-[var(--ss-text-secondary)]">
-                SYNTHETIC
-              </span>
+              <span className="ss-mono normal-case text-[var(--ss-text-secondary)]">SYNTHETIC</span>
             </span>
           </div>
           {readinessResult.kind !== "ok" && <ErrorState result={readinessResult} />}
         </div>
       </Panel>
 
+      {/* ── platform vs demonstration case ──────────────────────────── */}
+      <DemonstrationCase />
+
       {/* ── the workflow ─────────────────────────────────────────────── */}
       <Panel>
         <SectionHeader
-          title="Investigation chain"
+          title="Detection to investigation chain"
           subtitle="Each stage is a real computational stage. Register treatment shows whether a stage produces data, a calculation, retrieved evidence, model reasoning or a validation outcome."
         />
         <div className="p-[var(--ss-space-4)]">
@@ -121,33 +131,33 @@ export default async function MissionControlPage() {
       <Panel>
         <SectionHeader
           title="Begin"
-          subtitle="An investigation is always scoped to one module. Pick a module, review the configuration, then run."
+          subtitle="An investigation is always scoped to one component. Pick a component, review the configuration, then run."
         />
         <div className="flex flex-wrap items-center gap-[var(--ss-space-3)] p-[var(--ss-space-4)]">
           <Link
-            href="/modules"
+            href="/components"
             className="ss-field-label border border-[var(--ss-accent)] px-[var(--ss-space-4)] py-[var(--ss-space-2)] text-[var(--ss-text-primary)]"
             style={{
               borderRadius: "var(--ss-radius-sm)",
               backgroundColor: "var(--ss-accent-muted)",
             }}
           >
-            Select a module
+            Select a component
           </Link>
           <Link
-            href={`/modules/${CANONICAL_MODULE}`}
+            href={`/components/${DEMO_COMPONENT}`}
             className="ss-field-label border border-[var(--ss-border-strong)] px-[var(--ss-space-3)] py-[var(--ss-space-2)] hover:border-[var(--ss-accent)]"
             style={{ borderRadius: "var(--ss-radius-sm)" }}
           >
-            Open canonical module {CANONICAL_MODULE}
+            Open demonstration component {DEMO_COMPONENT}
           </Link>
-          {canonical.length > 0 && (
+          {demoInvestigations.length > 0 && (
             <Link
-              href={`/investigations/${canonical[canonical.length - 1]!.investigation_id}`}
+              href={`/investigations/${demoInvestigations[demoInvestigations.length - 1]!.investigation_id}`}
               className="ss-field-label border border-[var(--ss-border-strong)] px-[var(--ss-space-3)] py-[var(--ss-space-2)] hover:border-[var(--ss-accent)]"
               style={{ borderRadius: "var(--ss-radius-sm)" }}
             >
-              Open latest canonical investigation
+              Open latest demonstration investigation
             </Link>
           )}
         </div>
@@ -156,15 +166,15 @@ export default async function MissionControlPage() {
       <SplitPanel
         ratio="balanced"
         left={
-          /* ── population: real, from the parquet ─────────────────── */
+          /* ── population + derived dispositions ──────────────────── */
           <Panel>
             <SectionHeader
-              title="Module population"
+              title="Component population"
               subtitle={ANOMALY_QUALIFICATION}
               level={3}
               actions={
                 <Link
-                  href="/modules"
+                  href="/components"
                   className="ss-field-label border border-[var(--ss-border-strong)] px-[var(--ss-space-2)] py-[var(--ss-space-1)] hover:border-[var(--ss-accent)]"
                   style={{ borderRadius: "var(--ss-radius-sm)" }}
                 >
@@ -177,7 +187,7 @@ export default async function MissionControlPage() {
                 <>
                   <EmptyState
                     state="CAPABILITY_NOT_IMPLEMENTED"
-                    body="Module population could not be read. The module-summary artifact is required."
+                    body="Component population could not be read. The module-summary artifact is required."
                   />
                   <ErrorState result={populationResult} />
                 </>
@@ -185,7 +195,7 @@ export default async function MissionControlPage() {
                 <>
                   <div className="grid grid-cols-2 gap-[var(--ss-space-4)]">
                     <MetricValue
-                      label="Modules scored"
+                      label="Components screened"
                       value={population.n_modules}
                       register="DATA"
                       note={SYNTHETIC_NOTE}
@@ -196,29 +206,54 @@ export default async function MissionControlPage() {
                       register="DATA"
                     />
                   </div>
+
                   <AccessibleDataTable
-                    caption="Module count by anomaly status, with a filtered link into the explorer."
-                    rows={MODULE_ANOMALY_STATUS.map((s) => ({
-                      status: s,
-                      count: population.by_anomaly_status[s] ?? 0,
-                    }))}
-                    rowKey={(r) => r.status}
+                    caption="Screening disposition with the backend field it was derived from, and a filtered link into the component explorer."
+                    rows={dispositions}
+                    rowKey={(r) => r.disposition}
                     columns={[
                       {
-                        key: "status",
+                        key: "disposition",
+                        header: "screening disposition",
+                        render: (r) => <StatusChip status={r.disposition} />,
+                      },
+                      {
+                        key: "sourceValue",
                         header: "module_anomaly_status",
                         render: (r) => (
                           <Link
-                            href={`/modules?anomaly_status=${r.status}`}
-                            className="text-[var(--ss-accent)]"
+                            href={`/components?anomaly_status=${r.sourceValue}`}
+                            className="ss-mono text-[var(--ss-accent)]"
                           >
-                            {r.status}
+                            {r.sourceValue}
                           </Link>
                         ),
                       },
-                      { key: "count", header: "modules", render: (r) => r.count, align: "right" },
+                      { key: "count", header: "components", render: (r) => r.count, align: "right" },
                     ]}
                   />
+
+                  <p
+                    className="text-[var(--ss-text-muted)]"
+                    style={{
+                      fontSize: "var(--ss-text-label-size)",
+                      maxWidth: "var(--ss-measure-prose)",
+                    }}
+                  >
+                    Dispositions are derived in the presentation layer from
+                    <span className="ss-mono"> module_anomaly_status</span>. They are not backend
+                    fields and not predictions. EARLY REJECT is omitted here because it requires
+                    per-investigation acceptance-limit results, which a population count does not
+                    contain — reporting it as zero would assert something this data cannot support.
+                  </p>
+
+                  {unmapped.length > 0 && (
+                    <EmptyState
+                      state="CAPABILITY_NOT_IMPLEMENTED"
+                      body="The backend reported a screening status this build does not recognise, so it was not mapped to a disposition."
+                      detail={unmapped.map((u) => `${u.sourceValue} — ${u.count}`).join(" · ")}
+                    />
+                  )}
                 </>
               )}
             </div>
@@ -253,9 +288,13 @@ export default async function MissionControlPage() {
               ) : (
                 <>
                   <div className="grid grid-cols-2 gap-[var(--ss-space-4)]">
-                    <MetricValue label="Investigations" value={investigations.length} register="DATA" />
                     <MetricValue
-                      label="Modules investigated"
+                      label="Investigations"
+                      value={investigations.length}
+                      register="DATA"
+                    />
+                    <MetricValue
+                      label="Components investigated"
                       value={new Set(investigations.map((i) => i.module_id)).size}
                       register="DATA"
                     />
@@ -297,7 +336,7 @@ export default async function MissionControlPage() {
       {/* ── readiness summary ───────────────────────────────────────── */}
       <Panel>
         <SectionHeader
-          title="Pipeline readiness"
+          title="Pipeline status"
           subtitle="What this environment can and cannot show."
           level={3}
           actions={
@@ -322,9 +361,10 @@ export default async function MissionControlPage() {
                   register="DATA"
                 />
                 <MetricValue
-                  label="Knowledge base"
+                  label={KNOWLEDGE_BASE_NAME}
                   value={
-                    corpus?.collection.chunk_count !== null && corpus?.collection.chunk_count !== undefined
+                    corpus?.collection.chunk_count !== null &&
+                    corpus?.collection.chunk_count !== undefined
                       ? `${corpus.collection.chunk_count} chunks`
                       : null
                   }

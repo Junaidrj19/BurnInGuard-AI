@@ -1,5 +1,5 @@
 /**
- * Typed API client for the SmartESS backend.
+ * Typed API client for the BurnInGuard AI backend.
  *
  * Rules this module enforces (UX.md §43.2, §35 Rule 1; design.md §4):
  *

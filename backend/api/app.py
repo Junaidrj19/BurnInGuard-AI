@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 
 from backend.api.investigations import router as investigations_router
 from backend.api.modules import router as m10_router
+from backend.api.prediction import router as prediction_router
 from backend.api.system import router as system_router
 
 logging.basicConfig(
@@ -42,6 +43,7 @@ app.add_middleware(
 
 app.include_router(investigations_router)
 app.include_router(m10_router)
+app.include_router(prediction_router)
 app.include_router(system_router)
 
 
