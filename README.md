@@ -38,7 +38,7 @@ The primary output is a structured engineering investigation report with provena
 
 ## Problem Context
 
-EV power modules operate under electrical, thermal, and mechanical stress. Reliability tests collect electrical and thermal measurements over time. Simple limit checks can miss gradual degradation while values remain within specification.
+ISRO components operate under electrical, thermal, and mechanical stress. Reliability tests collect electrical and thermal measurements over time. Simple limit checks can miss gradual degradation while values remain within specification.
 
 Relevant indicators include RDS(on), Vth, IGSS, IDSS, VDS(on), Tj, Tc, and thermal resistance. Abnormal trajectories may provide earlier warning than absolute limit violations, but a signal change does not uniquely identify a physical failure mechanism.
 
